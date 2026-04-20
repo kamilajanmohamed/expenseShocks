@@ -10,6 +10,11 @@ source("00_setup/config.R")
 
 # Load packages ------------------------------------------------------------
 library(tidyverse)
+library(readxl)
 
 # Load data ------------------------------------------------------------
 df <- read_excel("data/raw/Expense Shock Final Results.xlsx")
+
+setwd("/Users/kamilajanmohamed/Library/CloudStorage/Dropbox/Research/ExpenseShocks/code")
+
+getwd()
