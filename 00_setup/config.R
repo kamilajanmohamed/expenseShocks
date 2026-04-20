@@ -14,7 +14,7 @@ this_file <- tryCatch(
   error = function(e)
     normalizePath(rstudioapi::getActiveDocumentContext()$path, mustWork = FALSE)
 )
-root <- dirname(dirname(dirname(this_file)))  # Travelers/
+root <- dirname(dirname(this_file))  # ExpenseShocks/
 
-# Set working directory to code/ so relative paths in scripts resolve correctly
+# Set working directory to root so relative paths (data/, code/) resolve correctly
 setwd(root)
