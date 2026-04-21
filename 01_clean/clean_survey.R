@@ -254,7 +254,7 @@ cleaned <- cleaned %>%
               lshock_paid_solbel = `I sold some belongings:How did you pay for this large and unexpected expense? Please select all that apply.`,
               lshock_paid_dk = `I’m not sure / I don’t recall:How did you pay for this large and unexpected expense? Please select all that apply.`,
               lshock_paid_other = `Other, please specify::How did you pay for this large and unexpected expense? Please select all that apply....43`,
-              shock_paid_other_text_25 = `Other, please specify::How did you pay for this large and unexpected expense? Please select all that apply....45`) %>%
+              lshock_paid_other_text = `Other, please specify::How did you pay for this large and unexpected expense? Please select all that apply....45`) %>%
        # clean shock repayment variables
        mutate(
               lshock_paid_3m = factor(lshock_paid_3m, levels = c("Yes, I <u>paid all</u> of the expense within three months" , "No, I <u>paid only some</u> of the expense within three months", "No, I <u>did not pay any</u> of the expense within three months"), 
@@ -277,56 +277,56 @@ cleaned <- cleaned %>%
                             lshock_paid_dk, lshock_paid_other),
                             ~ as.integer(!is.na(.x)))) %>%
        # lower case free test responses for easier searching
-       mutate(shock_paid_other_text_25 = tolower(shock_paid_other_text_25)) %>%
+       mutate(lshock_paid_other_text = tolower(lshock_paid_other_text)) %>%
        # reassign free text reponses where possible using string searching. intentionally not using an LLM for reproducibility and transparency
        mutate(
               lshock_paid_csacct = if_else(
     lshock_paid_other == 1 &
-      str_detect(shock_paid_other_text_25,
+      str_detect(lshock_paid_other_text,
         "\\bcash\\b|insurance|\\bhsa\\b|tax|inheritance|christmas money|dedicated account|salary||savings|checking|check|work bonus|deductible|out of pocket|debit|deposit"),
     1L, lshock_paid_csacct, lshock_paid_csacct),
 
   lshock_paid_retacct = if_else(
     lshock_paid_other == 1 &
-      str_detect(shock_paid_other_text_25, "401k|\\bira\\b|retirement"),
+      str_detect(lshock_paid_other_text, "401k|\\bira\\b|retirement"),
     1L, lshock_paid_retacct, lshock_paid_retacct),
 
   lshock_paid_ccard_mm = if_else(
               lshock_paid_other == 1 &
-              str_detect(shock_paid_other_text_25,
+              str_detect(lshock_paid_other_text,
                      "credit card|credit line"),
               1, lshock_paid_ccard_mm, lshock_paid_ccard_mm),
 
               lshock_paid_ffloan = if_else(
               lshock_paid_other == 1 &
-              str_detect(shock_paid_other_text_25, "son|church|go.?fund.?me"),
+              str_detect(lshock_paid_other_text, "son|church|go.?fund.?me"),
               1L, lshock_paid_ffloan, lshock_paid_ffloan),
 
               lshock_paid_bloan = if_else(
               lshock_paid_other == 1 &
-              str_detect(shock_paid_other_text_25,
+              str_detect(lshock_paid_other_text,
                      "loan|interest|financed|financing") &
-              !str_detect(shock_paid_other_text_25,
+              !str_detect(lshock_paid_other_text,
                      "401k|retirement|\\bira\\b|care credit|payment plan|affirm|medical credit"),
               1L, lshock_paid_bloan, lshock_paid_bloan),
 
               lshock_paid_heloc = if_else(
               lshock_paid_other == 1 &
-              str_detect(shock_paid_other_text_25, "refinanc"),
+              str_detect(lshock_paid_other_text, "refinanc"),
               1L, lshock_paid_heloc, lshock_paid_heloc),
 
               lshock_paid_incinc = if_else(
               lshock_paid_other == 1 &
-              str_detect(shock_paid_other_text_25, "bonus|recycl|whored"),
+              str_detect(lshock_paid_other_text, "bonus|recycl|whored"),
               1L, lshock_paid_incinc, lshock_paid_incinc),
 
               lshock_paid_solbel = if_else(
               lshock_paid_other == 1 &
-              str_detect(shock_paid_other_text_25,
+              str_detect(lshock_paid_other_text,
                      "stock|sell|sold|salvage|cashed"),
               1L, lshock_paid_solbel, lshock_paid_solbel)) %>%
        # drop cleaned free text variable
-       select(-c(shock_paid_other_text_25)) %>%
+       select(-c(lshock_paid_other_text)) %>%
        # remove other flag for recategorised values in lshock_paid_other
        mutate(reclassified = case_when(lshock_paid_other == 1 & (lshock_paid_csacct == 1 | lshock_paid_retacct == 1 | lshock_paid_ccard_mm == 1 | lshock_paid_ffloan == 1 | lshock_paid_bloan == 1 | lshock_paid_heloc == 1 | lshock_paid_incinc == 1 | lshock_paid_solbel == 1) ~ 1,
                                     TRUE ~ 0),
@@ -423,7 +423,7 @@ cleaned <- cleaned %>%
        # relocate shock month variable to be next to shock window variable
        relocate(lshock_month, lshock_month_imputed, .after = "lshock_hh_inc_imputed")
        
-#### Preditability and preventability -------------------------------------------------------------
+#### Predictability and preventability -------------------------------------------------------------
 cleaned <- cleaned %>%
        # rename_variables for conciseness
        rename(lshock_pred = `Right before this large and unexpected expense occurred, what did you think were the chances this event would occur?`,
