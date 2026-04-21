@@ -337,7 +337,8 @@ cleaned <- cleaned %>%
        # reorder variables to group shock repayment variables together
        relocate(c("shock_paid_3m_25", "shock_amt_paid_3m_25", "shock_paid_cs_acct_25", "shock_paid_ret_acct_25", "shock_paid_ccard_same_month_25",
                   "shock_paid_ccard_many_months_25", "shock_paid_ff_loan_25", "shock_paid_payday_loan_25",
-                  "shock_paid_bank_loan_25", "shock_paid_home_equity_25", "shock_paid_increased_income_25", "shock_paid_sold_belongings_25",
+                  "shock_paid_bank_loan_25", "shock_paid_home_equity_25", "shock_paid_reduced_spending_25",  
+                  "shock_paid_missed_payments_25", "shock_paid_increased_income_25", "shock_paid_sold_belongings_25",
                   "shock_paid_dk_25", "shock_paid_other_25"), .after = "shock_size_25_imputed")
 
 #### HH income at time of shock -------------------------------------------------------------
@@ -379,3 +380,62 @@ cleaned <- cleaned %>%
        relocate(c("shock_income_25", "shock_income_25_imputed"), .after = "shock_paid_other_25")
 
 #### Timing of shock -------------------------------------------------------------
+cleaned <- cleaned %>%
+        #rename variables for conciseness
+              rename(shock_window = `Approximately when did this large and unexpected expense occur?`,
+                     shock_month_1 = `In approximately what month did you have this large and unexpected expense?...50`,
+                     shock_month_2 = `In approximately what month did you have this large and unexpected expense?...51`,
+                     shock_month_3 = `In approximately what month did you have this large and unexpected expense?...52`,
+                     shock_month_4 = `In approximately what month did you have this large and unexpected expense?...53`,
+                     shock_month_5 = `In approximately what month did you have this large and unexpected expense?...54` ) %>%
+       # create helper variables  
+       mutate(shock_window_lower = case_when(shock_window == "In January, February, or March of 2025" ~ as.Date("2025-01-01"),
+                                              shock_window == "In April, May, or June of 2025" ~ as.Date("2025-04-01"),
+                                              shock_window == "In July, August, or September of 2025" ~ as.Date("2025-07-01"),
+                                              shock_window == "In October, November, or December of 2025" ~ as.Date("2025-10-01"),
+                                              shock_window == "In January, February, or March of 2026" ~ as.Date("2026-01-01"),
+                                              TRUE ~ NA),
+              shock_window_upper = case_when(shock_window == "In January, February, or March of 2025" ~ as.Date("2025-03-31"),
+                                                 shock_window == "In April, May, or June of 2025" ~ as.Date("2025-06-30"),
+                                              shock_window == "In July, August, or September of 2025" ~ as.Date("2025-09-30"),
+                                              shock_window == "In October, November, or December of 2025" ~ as.Date("2025-12-31"),
+                                              shock_window == "In January, February, or March of 2026" ~ as.Date("2026-03-31"),
+                                              TRUE ~ NA),
+              shock_window_midpoint = case_when(shock_window == "In January, February, or March of 2025" ~ as.Date("2025-02-01"),
+                                                   shock_window == "In April, May, or June of 2025" ~ as.Date("2025-05-01"),
+                                                   shock_window == "In July, August, or September of 2025" ~ as.Date("2025-08-01"),
+                                                   shock_window == "In October, November, or December of 2025" ~ as.Date("2025-11-01"),
+                                                   shock_window == "In January, February, or March of 2026" ~ as.Date("2026-02-01"),
+                                                   TRUE ~ NA )) %>%
+       # convert numbers to dates using excel's known epoch date system. if the response is not a number, it will be converted to NA
+       mutate(across(c(shock_month_1, shock_month_2, shock_month_3, shock_month_4, shock_month_5), 
+                     ~ as.Date(as.numeric(.x), origin = "1899-12-30"))) %>%
+       # none of the respondents have multiple reported shock months - safe to coalesce into one variable if needed for analysis of shock timing
+       mutate(shock_month_25 = coalesce(shock_month_1, shock_month_2, shock_month_3, shock_month_4, shock_month_5)) %>%
+       # impute values if shock window is given but shock month is missing OR shock month falls outside of shock window 
+       mutate(shock_month_25_imputed = case_when(is.na(shock_window) == FALSE & is.na(shock_month_25) == TRUE ~ 1,
+                                         is.na(shock_window) == FALSE & (shock_month_25 < shock_window_lower | shock_month_25 > shock_window_upper) ~ 1,
+                                         TRUE ~ 0),
+       shock_month_25 = case_when(shock_month_25_imputed == 1 ~ shock_window_midpoint,
+                                        TRUE ~ shock_month_25)) %>%
+       # drop helper variables
+       select(-c(shock_window_lower, shock_window_upper, shock_window_midpoint, shock_month_1, shock_month_2, shock_month_3, shock_month_4, shock_month_5, shock_window)) %>%
+       # relocate shock month variable to be next to shock window variable
+       relocate(shock_month_25, shock_month_25_imputed, .after = "shock_income_25_imputed")
+       
+#### Preditability and preventability -------------------------------------------------------------
+cleaned <- cleaned %>%
+       # rename_variables for conciseness
+       rename(shock_prediction = `Right before this large and unexpected expense occurred, what did you think were the chances this event would occur?`,
+              shock_prevention = `Looking back at this large and unexpected expense, could your household have taken steps to prevent it from happening or reduce its cost?`) %>%
+       # clean forecasting as factor variable
+       mutate(shock_prediction = factor(shock_prediction, levels = c("I did not think it would happen at all (about 0% chance)",
+                                                                      "I thought it was unlikely to happen (about 25% chance)" ,
+                                                                      "I thought it was equally likely and unlikely to happen (about 50% chance)",
+                                                                      "I thought it was likely to happen (about 75% chance)",
+                                                                      "I thought it would definitely happen (about 100% chance)"),
+                                                         labels = c("Impossible (0% chance)", "Unlikely (25% chance)", "Equally likely and unlikely(50% chance)", "Likely (75% chance)", "Definitely (100% chance)"))) %>%
+       # clean prevention as dummy
+       mutate(shock_prevention = case_when(shock_prevention == "Yes, we could have prevented it or reduced the cost of the expense (for example, with preventive care, maintenance, or insurance)" ~ 1,
+                                          shock_prevention == "No, there was nothing we could have done to prevent it or reduce the cost" ~ 0,
+                                          TRUE ~ NA))
