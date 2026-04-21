@@ -340,3 +340,42 @@ cleaned <- cleaned %>%
                   "shock_paid_bank_loan_25", "shock_paid_home_equity_25", "shock_paid_increased_income_25", "shock_paid_sold_belongings_25",
                   "shock_paid_dk_25", "shock_paid_other_25"), .after = "shock_size_25_imputed")
 
+#### HH income at time of shock -------------------------------------------------------------
+cleaned <- cleaned %>%
+       # rename variables for conciseness
+       rename(income_bin = `At the time you had this large and unexpected expense, what was your household’s monthly take-home income (your household's monthly income after taxes). Please include all sources of income such as income from jobs, any social security or government payments, and any retirement income.`,
+              income_value_under_25k = `You previously stated [question('value'), id='11']. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) at the time you had this large and unexpected expense?`,
+              income_over_25k = `You previously stated $25,000 or more. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) at the time you had this large and unexpected expense?`) %>%
+       # coalesce the reported income values into one column
+       mutate(income_25 = coalesce(income_value_under_25k, income_over_25k)) %>%
+       # create bin variables
+       mutate(
+              # lower bound of income bin variable
+              income_lower_bound =  case_when(str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub("-.*", "", income_bin)))),
+                                                                      str_detect(income_bin, "More than") ~ 25000,
+                                                                      TRUE ~ NA), 
+              # upper bound of income bin variable
+              income_upper_bound = case_when(str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub(".*-", "", income_bin)))),
+                                                                      str_detect(income_bin, "More than") ~ 25000,
+                                                                      TRUE ~ NA),
+              income_bin_midpoint = (income_lower_bound+income_upper_bound)/2) %>%
+       # create helper dummies
+       mutate(
+              # impute if income value less than lower bound of bin or if income value greater than upper bound of bin (for bins under 25k)
+              income_reporting_error = case_when(income_25 < income_lower_bound ~ 1,
+                                               income_upper_bound < 25000 & income_25 > income_upper_bound ~ 1,
+                                               TRUE ~ 0),
+              # missingness in reported income value but not in income bin
+              income_missing_value = case_when(is.na(income_25) == TRUE & is.na(income_bin) == FALSE ~ 1,
+                                              TRUE ~ 0)) %>%
+       # impute income values for responses with errors
+       mutate(shock_income_25 = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ income_bin_midpoint, 
+                                        TRUE ~ income_25),
+              shock_income_25_imputed = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ 1,
+                                                 TRUE ~ 0)) %>%
+       select(-c(income_bin, income_lower_bound, income_upper_bound, income_bin_midpoint, income_value_under_25k, income_over_25k, income_reporting_error, income_missing_value)             
+       ) %>%
+       # relocate new income variables to be next to other shock variables
+       relocate(c("shock_income_25", "shock_income_25_imputed"), .after = "shock_paid_other_25")
+
+#### Timing of shock -------------------------------------------------------------
