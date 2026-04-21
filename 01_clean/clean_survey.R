@@ -1,4 +1,4 @@
-/#############################################################
+#############################################################
 # Author: Kamila Janmohamed
 # Date: 2026-04-20
 # Description: Clean survey data on expense shocks
@@ -16,11 +16,11 @@ library(readxl)
 df <- read_excel("data/raw/Expense Shock Final Results.xlsx")
 
 # Clean data ------------------------------------------------------------
+#### Demographic variables -------------------------------------------------------------
 cleaned <- df %>%
-  ####### demographics #######
   # drop time survey started since we are only interested in date submitted for now
   select(-`Time Started`) %>%
-  # rename variables to be more concise and easier to work with, and to follow snake case convention
+  # rename variables for conciseness
   rename(
     date = `Date Submitted`,
     age = age_exact,
@@ -111,9 +111,12 @@ cleaned <- df %>%
              "age", "age_gen", "education", "ethnicity", "gender", 
              "children", "hh_size", "income", "job_ref", "marital_status", 
              "postal_code", "census_division", "census_region", "state", 
-             "urbanicity", "demo_weight")) %>% 
-  ######## expense shock vars ####### 
-  # rename relevant variables to be more concise and easier to work with
+             "urbanicity", "demo_weight"))
+
+
+#### Expense shock types -------------------------------------------------------------
+cleaned <- cleaned %>%
+  # rename relevant variables for conciseness
   rename(
     expense_shock_25 = `Since the beginning of 2025, did your household have a large and unexpected expense?`,
     n_expense_shocks_25 = `How many times since the beginning of 2025 did your household have a large and unexpected expense?`,
@@ -190,4 +193,44 @@ cleaned <- df %>%
                                   str_detect(last_expense_shock_type_other_25, "family members moved in with us|visit to family member whose time on earth was limited") == FALSE ~ "Gift/Loan to family/friend",
                                          TRUE ~ last_expense_shock_type_25)) %>%
   # drop the other categorisation column
-  select(-c(last_expense_shock_type_other_25))
+  select(-c(last_expense_shock_type_other_25)) %>%
+       # reorder to group expense shock variables together
+       relocate(c("expense_shock_25", "n_expense_shocks_25", "last_expense_shock_type_25"), 
+               .after = "demo_weight")
+
+#### Expense shock amounts -------------------------------------------------------------
+cleaned <- cleaned %>%
+  #rename variables for conciseness
+  rename(expense_bin = `About how much money was the total cost for this large and unexpected expense?  Please estimate the full amount of this expense even if you did not pay all of it at once or if you are paying over time.`,
+         expense_value_under_20k = `You previously stated [question('value'), id='6']. Specifically, what was the approximate total cost for this large and unexpected expense?`,
+         expense_value_over_20k = `You previously stated $20,000 or more. Specifically, what was the approximate total cost for this large and unexpected expense?`) %>%
+       # coalesce the reported expense values into one column 
+       mutate(last_expense_shock_size_25 = coalesce(expense_value_under_20k, expense_value_over_20k)) %>%
+         # create bin variables
+         mutate(
+              # lower bound of expense bin variable
+              lower_bound =  case_when(str_detect(expense_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub("-.*", "", expense_bin)))),
+                                                                      str_detect(expense_bin, "More than") ~ 20000,
+                                                                      TRUE ~ NA_real_),
+              # upper bound of expense bin variable
+              upper_bound = case_when(str_detect(expense_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub(".*-", "", expense_bin)))),
+                                                                      str_detect(expense_bin, "More than") ~ 20000,
+                                                                      TRUE ~ NA_real_),
+              bin_midpoint = (lower_bound+upper_bound)/2) %>% 
+       # create helper dummies 
+       mutate(
+              # impute if the expense value is less than the lower bound of the bin or if the expense value is greater than the upper bound of the bin (for bins under 20k)
+              reporting_error = case_when(last_expense_shock_size_25 < lower_bound ~ 1,
+                                          upper_bound < 20000 & last_expense_shock_size_25 > upper_bound ~ 1,
+                                                 TRUE ~ 0),
+              # missingness in reported expense value but not in expense bin
+              missing_expense_value = case_when(is.na(last_expense_shock_size_25) == TRUE & is.na(expense_bin) == FALSE ~ 1,
+                                              TRUE ~ 0)) %>%
+       # impute expense shock sizes for responses with errors 
+       mutate(last_expense_shock_size_25 = case_when(reporting_error == 1 | missing_expense_value == 1 ~ bin_midpoint, 
+                                                     TRUE ~ last_expense_shock_size_25),
+              last_expense_shock_size_25_imputed = case_when(reporting_error == 1 | missing_expense_value == 1 ~ 1,
+                                                            TRUE ~ 0)) %>%
+       select(-c(expense_bin, lower_bound, upper_bound, bin_midpoint, reporting_error, missing_expense_value, expense_value_over_20k, expense_value_under_20k)) %>%
+       # rearrange expense shock variables
+       relocate(c("last_expense_shock_size_25", "last_expense_shock_size_25_imputed"), .after = "last_expense_shock_type_25")
