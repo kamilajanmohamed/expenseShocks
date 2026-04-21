@@ -118,21 +118,21 @@ cleaned <- df %>%
 cleaned <- cleaned %>%
   # rename relevant variables for conciseness
   rename(
-    shock_25 = `Since the beginning of 2025, did your household have a large and unexpected expense?`,
-    n_shock_25 = `How many times since the beginning of 2025 did your household have a large and unexpected expense?`,
-    shock_type_25 = `For the most recent time, what type of large and unexpected expense was this?`,
-    shock_type_other_25 = `Some other large and unexpected expense, please specify::For the most recent time, what type of large and unexpected expense was this?`) %>%
+   any_shock= `Since the beginning of 2025, did your household have a large and unexpected expense?`,
+    n_shock = `How many times since the beginning of 2025 did your household have a large and unexpected expense?`,
+    lshock_type = `For the most recent time, what type of large and unexpected expense was this?`,
+    lshock_type_other = `Some other large and unexpected expense, please specify::For the most recent time, what type of large and unexpected expense was this?`) %>%
   mutate(
-    shock_25 = case_when(shock_25 == "Yes" ~ 1,
-                                 shock_25 == "No" ~ 0,
+   any_shock= case_when(any_shock == "Yes" ~ 1,
+                                any_shock== "No" ~ 0,
                                   TRUE ~ NA),
-    n_shock_25 = factor(n_shock_25, 
+    n_shock = factor(n_shock, 
                                  levels = c("1 time", "2 times", "3 times" , 
                                             "4 times", "5 to 10 times" , 
                                             "More than 10 times"), 
                                  ordered = TRUE),
   # first, create a variable for the type of most recent expense shock using raw response categories - includes "other"
-  shock_type_25 = factor(shock_type_25,levels = 
+  lshock_type = factor(lshock_type,levels = 
                                         c("Funeral or burial expenses", 
                                           "A major out-of-pocket medical or dental expense", 
                                           "A major home or appliance repair", 
@@ -160,42 +160,42 @@ cleaned <- cleaned %>%
                                              "Gift/Loan to family/friend", 
                                              "Other")),
   # standardise "other" responses by converting to lowercase 
-  shock_type_other_25 = tolower(shock_type_other_25),
-  # then, replace other vars in the shock_type_25_variable with recategorised other responses where applicable
-  shock_type_25 = case_when(shock_type_25 != "Other" ~ shock_type_25,
-                                shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "funeral|burial|died") ~ "Funeral/Burial expenses",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "medical|dental|health|cancer|surgery|surgeries|sugeries|hospital|therapy") & 
-                                  str_detect(shock_type_other_25, "son|family|child") == FALSE ~ "Medical/Dental expenses",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "home|house|window|roof|basement|garage|driveway|crawl|deck|roof|window|lawn|pool|tree|pest|leak|plumber|plumbing|flood|paint|furnace|a/c|conditioner|aircon|furnace|electrical|appliance|hvac|freezer|fridge|refrigerator|stove| washer|dryer|heater|drainage|gas line|new guest bed|new recliner|heating system repair|hot tub|solar system|well water") & 
-                                  str_detect(shock_type_other_25, "house payment|purchase a home") == FALSE ~ "Home/Appliance repair",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "vehicle|auto|car|truck|auto|tire|boat|oil tank") & 
-                                  str_detect(shock_type_other_25, "we had to buy a trailer to use as another room to place my son's in so that we could take care of a family member who needed 24 hour care") == FALSE ~ "Vehicle repair/replacement",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "legal|tax|fine") ~ "Legal expenses/taxes/fines",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "moving|relocation|deposit") ~ "Moving/Relocation costs",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "\\brent\\b|mortgage|house payment")  ~ "Rent increase",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "veterinary|pet|\\bcat\\b|dog") ~ "Veterinary/Pet care expenses",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "computer|phone") ~ "Computer/Phone repair/replacement",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "childcare|dependent care") ~ "Childcare/Dependent care expenses",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "utility|electric|light bill") ~ "Utility bill increase",
-                                         shock_type_25 == "Other" & 
-                                  str_detect(shock_type_other_25, "gift|loan|son|child|grandson|eldest|family|daughter") & 
-                                  str_detect(shock_type_other_25, "family members moved in with us|visit to family member whose time on earth was limited") == FALSE ~ "Gift/Loan to family/friend",
-                                         TRUE ~ shock_type_25)) %>%
+  lshock_type_other = tolower(lshock_type_other),
+  # then, replace other vars in the lshock_type_variable with recategorised other responses where applicable
+  lshock_type = case_when(lshock_type != "Other" ~ lshock_type,
+                                lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "funeral|burial|died") ~ "Funeral/Burial expenses",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "medical|dental|health|cancer|surgery|surgeries|sugeries|hospital|therapy") & 
+                                  str_detect(lshock_type_other, "son|family|child") == FALSE ~ "Medical/Dental expenses",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "home|house|window|roof|basement|garage|driveway|crawl|deck|roof|window|lawn|pool|tree|pest|leak|plumber|plumbing|flood|paint|furnace|a/c|conditioner|aircon|furnace|electrical|appliance|hvac|freezer|fridge|refrigerator|stove| washer|dryer|heater|drainage|gas line|new guest bed|new recliner|heating system repair|hot tub|solar system|well water") & 
+                                  str_detect(lshock_type_other, "house payment|purchase a home") == FALSE ~ "Home/Appliance repair",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "vehicle|auto|car|truck|auto|tire|boat|oil tank") & 
+                                  str_detect(lshock_type_other, "we had to buy a trailer to use as another room to place my son's in so that we could take care of a family member who needed 24 hour care") == FALSE ~ "Vehicle repair/replacement",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "legal|tax|fine") ~ "Legal expenses/taxes/fines",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "moving|relocation|deposit") ~ "Moving/Relocation costs",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "\\brent\\b|mortgage|house payment")  ~ "Rent increase",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "veterinary|pet|\\bcat\\b|dog") ~ "Veterinary/Pet care expenses",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "computer|phone") ~ "Computer/Phone repair/replacement",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "childcare|dependent care") ~ "Childcare/Dependent care expenses",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "utility|electric|light bill") ~ "Utility bill increase",
+                                         lshock_type == "Other" & 
+                                  str_detect(lshock_type_other, "gift|loan|son|child|grandson|eldest|family|daughter") & 
+                                  str_detect(lshock_type_other, "family members moved in with us|visit to family member whose time on earth was limited") == FALSE ~ "Gift/Loan to family/friend",
+                                         TRUE ~ lshock_type)) %>%
   # drop the other categorisation column
-  select(-c(shock_type_other_25)) %>%
+  select(-c(lshock_type_other)) %>%
        # reorder to group expense shock variables together
-       relocate(c("shock_25", "n_shock_25", "shock_type_25"), 
+       relocate(c("any_shock", "n_shock", "lshock_type"), 
                .after = "demo_weight")
 
 #### Expense shock amounts -------------------------------------------------------------
@@ -205,7 +205,7 @@ cleaned <- cleaned %>%
          expense_value_under_20k = `You previously stated [question('value'), id='6']. Specifically, what was the approximate total cost for this large and unexpected expense?`,
          expense_value_over_20k = `You previously stated $20,000 or more. Specifically, what was the approximate total cost for this large and unexpected expense?`) %>%
        # coalesce the reported expense values into one column 
-       mutate(shock_size_25 = coalesce(expense_value_under_20k, expense_value_over_20k)) %>%
+       mutate(lshock_size = coalesce(expense_value_under_20k, expense_value_over_20k)) %>%
          # create bin variables
          mutate(
               # lower bound of expense bin variable
@@ -220,126 +220,126 @@ cleaned <- cleaned %>%
        # create helper dummies 
        mutate(
               # impute if the expense value is less than the lower bound of the bin or if the expense value is greater than the upper bound of the bin (for bins under 20k)
-              reporting_error = case_when(shock_size_25 < lower_bound ~ 1,
-                                          upper_bound < 20000 & shock_size_25 > upper_bound ~ 1,
+              reporting_error = case_when(lshock_size < lower_bound ~ 1,
+                                          upper_bound < 20000 &lshock_size > upper_bound ~ 1,
                                                  TRUE ~ 0),
               # missingness in reported expense value but not in expense bin
-              missing_expense_value = case_when(is.na(shock_size_25) == TRUE & is.na(expense_bin) == FALSE ~ 1,
+              missing_expense_value = case_when(is.na(lshock_size) == TRUE & is.na(expense_bin) == FALSE ~ 1,
                                               TRUE ~ 0)) %>%
        # impute expense shock sizes for responses with errors 
-       mutate(shock_size_25 = case_when(reporting_error == 1 | missing_expense_value == 1 ~ bin_midpoint, 
-                                                     TRUE ~ shock_size_25),
-              shock_size_25_imputed = case_when(reporting_error == 1 | missing_expense_value == 1 ~ 1,
+       mutate(lshock_size = case_when(reporting_error == 1 | missing_expense_value == 1 ~ bin_midpoint, 
+                                                     TRUE ~lshock_size),
+             lshock_size_imputed = case_when(reporting_error == 1 | missing_expense_value == 1 ~ 1,
                                                             TRUE ~ 0)) %>%
        select(-c(expense_bin, lower_bound, upper_bound, bin_midpoint, reporting_error, missing_expense_value, expense_value_over_20k, expense_value_under_20k)) %>%
        # rearrange expense shock variables
-       relocate(c("shock_size_25", "shock_size_25_imputed"), .after = "shock_type_25")
+       relocate(c("lshock_size", "lshock_size_imputed"), .after = "lshock_type")
 
 #### Expense shock repayment -------------------------------------------------------------
 cleaned <- cleaned %>%
        # rename variables
-       rename(shock_paid_3m_25 = `Did you pay the full amount of this large and unexpected expense within three months after you had this expense?`,
-              shock_amt_paid_3m_25 = `Within three months after you had this large and unexpected expense, about how much of it had you paid off?`,
-              shock_paid_cs_acct_25 = `I used money in checking and savings accounts:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_ret_acct_25 = `I used money in retirement accounts:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_ccard_same_month_25 =  `I paid it using my credit card and paid the full amount at the end of the month:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_ccard_many_months_25 = `I paid it using my credit card and paid the amount over multiple months:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_ff_loan_25 = `I borrowed from family and/or friends:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_payday_loan_25 = `I used a payday or auto-title loan:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_bank_loan_25 = `I took a loan from a bank or a credit union:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_home_equity_25 = `I took out or used a home equity line of credit:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_reduced_spending_25 = `I reduced my spending on other expenses:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_missed_payments_25 = `I missed some bills or other payments:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_increased_income_25 = `I increased my income by working more hours or at another job:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_sold_belongings_25 = `I sold some belongings:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_dk_25 = `I’m not sure / I don’t recall:How did you pay for this large and unexpected expense? Please select all that apply.`,
-              shock_paid_other_25 = `Other, please specify::How did you pay for this large and unexpected expense? Please select all that apply....43`,
+       rename(lshock_paid_3m = `Did you pay the full amount of this large and unexpected expense within three months after you had this expense?`,
+              lshock_amt_paid_3m = `Within three months after you had this large and unexpected expense, about how much of it had you paid off?`,
+              lshock_paid_csacct = `I used money in checking and savings accounts:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_retacct = `I used money in retirement accounts:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_ccard_sm =  `I paid it using my credit card and paid the full amount at the end of the month:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_ccard_mm = `I paid it using my credit card and paid the amount over multiple months:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_ffloan = `I borrowed from family and/or friends:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_pdloan = `I used a payday or auto-title loan:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_bloan = `I took a loan from a bank or a credit union:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_heloc = `I took out or used a home equity line of credit:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_redspend = `I reduced my spending on other expenses:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_mispay = `I missed some bills or other payments:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_incinc = `I increased my income by working more hours or at another job:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_solbel = `I sold some belongings:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_dk = `I’m not sure / I don’t recall:How did you pay for this large and unexpected expense? Please select all that apply.`,
+              lshock_paid_other = `Other, please specify::How did you pay for this large and unexpected expense? Please select all that apply....43`,
               shock_paid_other_text_25 = `Other, please specify::How did you pay for this large and unexpected expense? Please select all that apply....45`) %>%
        # clean shock repayment variables
        mutate(
-              shock_paid_3m_25 = factor(shock_paid_3m_25, levels = c("Yes, I <u>paid all</u> of the expense within three months" , "No, I <u>paid only some</u> of the expense within three months", "No, I <u>did not pay any</u> of the expense within three months"), 
+              lshock_paid_3m = factor(lshock_paid_3m, levels = c("Yes, I <u>paid all</u> of the expense within three months" , "No, I <u>paid only some</u> of the expense within three months", "No, I <u>did not pay any</u> of the expense within three months"), 
                                                          labels = c("Paid in full within 3 months", "Partially paid within 3 months", "Not paid at all within 3 months"), 
                                                          ordered = TRUE),
-              shock_amt_paid_3m_25 = factor(shock_amt_paid_3m_25, levels = c("I only paid very little (close to 0%)", "I paid about half (50%) of the expense", "I paid about three-quarters (75%) of the expense", "I paid almost all (almost 100%) of the expense"), 
+              lshock_amt_paid_3m = factor(lshock_amt_paid_3m, levels = c("I only paid very little (close to 0%)", "I paid about half (50%) of the expense", "I paid about three-quarters (75%) of the expense", "I paid almost all (almost 100%) of the expense"), 
                                                                       labels = c("About 0%", "About 50%", "About 75%", "About 100%"), 
                                                                       ordered = TRUE)) %>%
-       # if you paid 0% or 100% within 3 months in 2025 from shock_paid_3m_25, add levels for 100% paid and 0% paid to shock_amt_paid_3m_25
-       mutate(shock_amt_paid_3m_25 = case_when(shock_paid_3m_25 == "Not paid at all within 3 months" & is.na(shock_amt_paid_3m_25) == TRUE ~ "0%",
-                                                 shock_paid_3m_25 == "Paid in full within 3 months" & is.na(shock_amt_paid_3m_25) == TRUE ~ "100%",
-                                                 TRUE ~ shock_amt_paid_3m_25)) %>%
+       # if you paid 0% or 100% within 3 months in 2025 from lshock_paid_3m, add levels for 100% paid and 0% paid to lshock_amt_paid_3m
+       mutate(lshock_amt_paid_3m = case_when(lshock_paid_3m == "Not paid at all within 3 months" & is.na(lshock_amt_paid_3m) == TRUE ~ "0%",
+                                                 lshock_paid_3m == "Paid in full within 3 months" & is.na(lshock_amt_paid_3m) == TRUE ~ "100%",
+                                                 TRUE ~ lshock_amt_paid_3m)) %>%
        # add and reorder factor levels
-       mutate(shock_amt_paid_3m_25 = factor(shock_amt_paid_3m_25, levels = c("0%", "About 0%", "About 50%", "About 75%", "About 100%", "100%"), ordered = TRUE)) %>%
+       mutate(lshock_amt_paid_3m = factor(lshock_amt_paid_3m, levels = c("0%", "About 0%", "About 50%", "About 75%", "About 100%", "100%"), ordered = TRUE)) %>%
        # recode shock repayment method variables as dummies. if shock amt paid is NA, all of these should also be NAs
-       mutate(across(c(shock_paid_cs_acct_25, shock_paid_ret_acct_25, shock_paid_ccard_same_month_25,
-                            shock_paid_ccard_many_months_25, shock_paid_ff_loan_25, shock_paid_payday_loan_25,
-                            shock_paid_bank_loan_25, shock_paid_home_equity_25, shock_paid_reduced_spending_25,
-                            shock_paid_missed_payments_25, shock_paid_increased_income_25, shock_paid_sold_belongings_25,
-                            shock_paid_dk_25, shock_paid_other_25),
+       mutate(across(c(lshock_paid_csacct, lshock_paid_retacct, lshock_paid_ccard_sm,
+                            lshock_paid_ccard_mm, lshock_paid_ffloan, lshock_paid_pdloan,
+                            lshock_paid_bloan, lshock_paid_heloc, lshock_paid_redspend,
+                            lshock_paid_mispay, lshock_paid_incinc, lshock_paid_solbel,
+                            lshock_paid_dk, lshock_paid_other),
                             ~ as.integer(!is.na(.x)))) %>%
        # lower case free test responses for easier searching
        mutate(shock_paid_other_text_25 = tolower(shock_paid_other_text_25)) %>%
        # reassign free text reponses where possible using string searching. intentionally not using an LLM for reproducibility and transparency
        mutate(
-              shock_paid_cs_acct_25 = if_else(
-    shock_paid_other_25 == 1 &
+              lshock_paid_csacct = if_else(
+    lshock_paid_other == 1 &
       str_detect(shock_paid_other_text_25,
         "\\bcash\\b|insurance|\\bhsa\\b|tax|inheritance|christmas money|dedicated account|salary||savings|checking|check|work bonus|deductible|out of pocket|debit|deposit"),
-    1L, shock_paid_cs_acct_25, shock_paid_cs_acct_25),
+    1L, lshock_paid_csacct, lshock_paid_csacct),
 
-  shock_paid_ret_acct_25 = if_else(
-    shock_paid_other_25 == 1 &
+  lshock_paid_retacct = if_else(
+    lshock_paid_other == 1 &
       str_detect(shock_paid_other_text_25, "401k|\\bira\\b|retirement"),
-    1L, shock_paid_ret_acct_25, shock_paid_ret_acct_25),
+    1L, lshock_paid_retacct, lshock_paid_retacct),
 
-  shock_paid_ccard_many_months_25 = if_else(
-              shock_paid_other_25 == 1 &
+  lshock_paid_ccard_mm = if_else(
+              lshock_paid_other == 1 &
               str_detect(shock_paid_other_text_25,
                      "credit card|credit line"),
-              1, shock_paid_ccard_many_months_25, shock_paid_ccard_many_months_25),
+              1, lshock_paid_ccard_mm, lshock_paid_ccard_mm),
 
-              shock_paid_ff_loan_25 = if_else(
-              shock_paid_other_25 == 1 &
+              lshock_paid_ffloan = if_else(
+              lshock_paid_other == 1 &
               str_detect(shock_paid_other_text_25, "son|church|go.?fund.?me"),
-              1L, shock_paid_ff_loan_25, shock_paid_ff_loan_25),
+              1L, lshock_paid_ffloan, lshock_paid_ffloan),
 
-              shock_paid_bank_loan_25 = if_else(
-              shock_paid_other_25 == 1 &
+              lshock_paid_bloan = if_else(
+              lshock_paid_other == 1 &
               str_detect(shock_paid_other_text_25,
                      "loan|interest|financed|financing") &
               !str_detect(shock_paid_other_text_25,
                      "401k|retirement|\\bira\\b|care credit|payment plan|affirm|medical credit"),
-              1L, shock_paid_bank_loan_25, shock_paid_bank_loan_25),
+              1L, lshock_paid_bloan, lshock_paid_bloan),
 
-              shock_paid_home_equity_25 = if_else(
-              shock_paid_other_25 == 1 &
+              lshock_paid_heloc = if_else(
+              lshock_paid_other == 1 &
               str_detect(shock_paid_other_text_25, "refinanc"),
-              1L, shock_paid_home_equity_25, shock_paid_home_equity_25),
+              1L, lshock_paid_heloc, lshock_paid_heloc),
 
-              shock_paid_increased_income_25 = if_else(
-              shock_paid_other_25 == 1 &
+              lshock_paid_incinc = if_else(
+              lshock_paid_other == 1 &
               str_detect(shock_paid_other_text_25, "bonus|recycl|whored"),
-              1L, shock_paid_increased_income_25, shock_paid_increased_income_25),
+              1L, lshock_paid_incinc, lshock_paid_incinc),
 
-              shock_paid_sold_belongings_25 = if_else(
-              shock_paid_other_25 == 1 &
+              lshock_paid_solbel = if_else(
+              lshock_paid_other == 1 &
               str_detect(shock_paid_other_text_25,
                      "stock|sell|sold|salvage|cashed"),
-              1L, shock_paid_sold_belongings_25, shock_paid_sold_belongings_25)) %>%
+              1L, lshock_paid_solbel, lshock_paid_solbel)) %>%
        # drop cleaned free text variable
        select(-c(shock_paid_other_text_25)) %>%
-       # remove other flag for recategorised values in shock_paid_other_25
-       mutate(reclassified = case_when(shock_paid_other_25 == 1 & (shock_paid_cs_acct_25 == 1 | shock_paid_ret_acct_25 == 1 | shock_paid_ccard_many_months_25 == 1 | shock_paid_ff_loan_25 == 1 | shock_paid_bank_loan_25 == 1 | shock_paid_home_equity_25 == 1 | shock_paid_increased_income_25 == 1 | shock_paid_sold_belongings_25 == 1) ~ 1,
+       # remove other flag for recategorised values in lshock_paid_other
+       mutate(reclassified = case_when(lshock_paid_other == 1 & (lshock_paid_csacct == 1 | lshock_paid_retacct == 1 | lshock_paid_ccard_mm == 1 | lshock_paid_ffloan == 1 | lshock_paid_bloan == 1 | lshock_paid_heloc == 1 | lshock_paid_incinc == 1 | lshock_paid_solbel == 1) ~ 1,
                                     TRUE ~ 0),
-              shock_paid_other_25 = case_when(reclassified == 1 ~ 0,
-                                              TRUE ~ shock_paid_other_25)) %>%
+              lshock_paid_other = case_when(reclassified == 1 ~ 0,
+                                              TRUE ~ lshock_paid_other)) %>%
        # drop reclassified flag variable
        select(-c(reclassified)) %>%
        # reorder variables to group shock repayment variables together
-       relocate(c("shock_paid_3m_25", "shock_amt_paid_3m_25", "shock_paid_cs_acct_25", "shock_paid_ret_acct_25", "shock_paid_ccard_same_month_25",
-                  "shock_paid_ccard_many_months_25", "shock_paid_ff_loan_25", "shock_paid_payday_loan_25",
-                  "shock_paid_bank_loan_25", "shock_paid_home_equity_25", "shock_paid_reduced_spending_25",  
-                  "shock_paid_missed_payments_25", "shock_paid_increased_income_25", "shock_paid_sold_belongings_25",
-                  "shock_paid_dk_25", "shock_paid_other_25"), .after = "shock_size_25_imputed")
+       relocate(c("lshock_paid_3m", "lshock_amt_paid_3m", "lshock_paid_csacct", "lshock_paid_retacct", "lshock_paid_ccard_sm",
+                  "lshock_paid_ccard_mm", "lshock_paid_ffloan", "lshock_paid_pdloan",
+                  "lshock_paid_bloan", "lshock_paid_heloc", "lshock_paid_redspend",  
+                  "lshock_paid_mispay", "lshock_paid_incinc", "lshock_paid_solbel",
+                  "lshock_paid_dk", "lshock_paid_other"), .after = "lshock_size_imputed")
 
 #### HH income at time of shock -------------------------------------------------------------
 cleaned <- cleaned %>%
@@ -370,14 +370,14 @@ cleaned <- cleaned %>%
               income_missing_value = case_when(is.na(income_25) == TRUE & is.na(income_bin) == FALSE ~ 1,
                                               TRUE ~ 0)) %>%
        # impute income values for responses with errors
-       mutate(shock_income_25 = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ income_bin_midpoint, 
+       mutate(lshock_hh_inc = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ income_bin_midpoint, 
                                         TRUE ~ income_25),
-              shock_income_25_imputed = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ 1,
+              lshock_hh_inc_imputed = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ 1,
                                                  TRUE ~ 0)) %>%
        select(-c(income_bin, income_lower_bound, income_upper_bound, income_bin_midpoint, income_value_under_25k, income_over_25k, income_reporting_error, income_missing_value)             
        ) %>%
        # relocate new income variables to be next to other shock variables
-       relocate(c("shock_income_25", "shock_income_25_imputed"), .after = "shock_paid_other_25")
+       relocate(c("lshock_hh_inc", "lshock_hh_inc_imputed"), .after = "lshock_paid_other")
 
 #### Timing of shock -------------------------------------------------------------
 cleaned <- cleaned %>%
@@ -411,31 +411,31 @@ cleaned <- cleaned %>%
        mutate(across(c(shock_month_1, shock_month_2, shock_month_3, shock_month_4, shock_month_5), 
                      ~ as.Date(as.numeric(.x), origin = "1899-12-30"))) %>%
        # none of the respondents have multiple reported shock months - safe to coalesce into one variable if needed for analysis of shock timing
-       mutate(shock_month_25 = coalesce(shock_month_1, shock_month_2, shock_month_3, shock_month_4, shock_month_5)) %>%
+       mutate(lshock_month = coalesce(shock_month_1, shock_month_2, shock_month_3, shock_month_4, shock_month_5)) %>%
        # impute values if shock window is given but shock month is missing OR shock month falls outside of shock window 
-       mutate(shock_month_25_imputed = case_when(is.na(shock_window) == FALSE & is.na(shock_month_25) == TRUE ~ 1,
-                                         is.na(shock_window) == FALSE & (shock_month_25 < shock_window_lower | shock_month_25 > shock_window_upper) ~ 1,
+       mutate(lshock_month_imputed = case_when(is.na(shock_window) == FALSE & is.na(lshock_month) == TRUE ~ 1,
+                                         is.na(shock_window) == FALSE & (lshock_month < shock_window_lower | lshock_month > shock_window_upper) ~ 1,
                                          TRUE ~ 0),
-       shock_month_25 = case_when(shock_month_25_imputed == 1 ~ shock_window_midpoint,
-                                        TRUE ~ shock_month_25)) %>%
+       lshock_month = case_when(lshock_month_imputed == 1 ~ shock_window_midpoint,
+                                        TRUE ~ lshock_month)) %>%
        # drop helper variables
        select(-c(shock_window_lower, shock_window_upper, shock_window_midpoint, shock_month_1, shock_month_2, shock_month_3, shock_month_4, shock_month_5, shock_window)) %>%
        # relocate shock month variable to be next to shock window variable
-       relocate(shock_month_25, shock_month_25_imputed, .after = "shock_income_25_imputed")
+       relocate(lshock_month, lshock_month_imputed, .after = "lshock_hh_inc_imputed")
        
 #### Preditability and preventability -------------------------------------------------------------
 cleaned <- cleaned %>%
        # rename_variables for conciseness
-       rename(shock_prediction = `Right before this large and unexpected expense occurred, what did you think were the chances this event would occur?`,
-              shock_prevention = `Looking back at this large and unexpected expense, could your household have taken steps to prevent it from happening or reduce its cost?`) %>%
+       rename(lshock_pred = `Right before this large and unexpected expense occurred, what did you think were the chances this event would occur?`,
+              lshock_prev = `Looking back at this large and unexpected expense, could your household have taken steps to prevent it from happening or reduce its cost?`) %>%
        # clean forecasting as factor variable
-       mutate(shock_prediction = factor(shock_prediction, levels = c("I did not think it would happen at all (about 0% chance)",
+       mutate(lshock_pred = factor(lshock_pred, levels = c("I did not think it would happen at all (about 0% chance)",
                                                                       "I thought it was unlikely to happen (about 25% chance)" ,
                                                                       "I thought it was equally likely and unlikely to happen (about 50% chance)",
                                                                       "I thought it was likely to happen (about 75% chance)",
                                                                       "I thought it would definitely happen (about 100% chance)"),
                                                          labels = c("Impossible (0% chance)", "Unlikely (25% chance)", "Equally likely and unlikely(50% chance)", "Likely (75% chance)", "Definitely (100% chance)"))) %>%
        # clean prevention as dummy
-       mutate(shock_prevention = case_when(shock_prevention == "Yes, we could have prevented it or reduced the cost of the expense (for example, with preventive care, maintenance, or insurance)" ~ 1,
-                                          shock_prevention == "No, there was nothing we could have done to prevent it or reduce the cost" ~ 0,
+       mutate(lshock_prev = case_when(lshock_prev == "Yes, we could have prevented it or reduced the cost of the expense (for example, with preventive care, maintenance, or insurance)" ~ 1,
+                                          lshock_prev == "No, there was nothing we could have done to prevent it or reduce the cost" ~ 0,
                                           TRUE ~ NA))
