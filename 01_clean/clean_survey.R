@@ -35,7 +35,7 @@ cleaned <- df %>%
     user_id = as.factor(user_id),
     date = as.Date(date),
     complete_response = case_when(Status == "Complete" ~ 1, 
-                                  is.na(Status) == TRUE ~ NA,
+                                  is.na(Status) ~ NA,
                                   TRUE ~ 0),
     ### age vars ###
     age_bucket = factor(age_bucket,
@@ -224,7 +224,7 @@ cleaned <- cleaned %>%
                                           upper_bound < 20000 &lshock_size > upper_bound ~ 1,
                                                  TRUE ~ 0),
               # missingness in reported expense value but not in expense bin
-              missing_expense_value = case_when(is.na(lshock_size) == TRUE & is.na(expense_bin) == FALSE ~ 1,
+              missing_expense_value = case_when(is.na(lshock_size) & !is.na(expense_bin) ~ 1,
                                               TRUE ~ 0)) %>%
        # impute expense shock sizes for responses with errors 
        mutate(lshock_size = case_when(reporting_error == 1 | missing_expense_value == 1 ~ bin_midpoint, 
@@ -264,8 +264,8 @@ cleaned <- cleaned %>%
                                                                       labels = c("About 0%", "About 50%", "About 75%", "About 100%"), 
                                                                       ordered = TRUE)) %>%
        # if you paid 0% or 100% within 3 months in 2025 from lshock_paid_3m, add levels for 100% paid and 0% paid to lshock_amt_paid_3m
-       mutate(lshock_amt_paid_3m = case_when(lshock_paid_3m == "Not paid at all within 3 months" & is.na(lshock_amt_paid_3m) == TRUE ~ "0%",
-                                                 lshock_paid_3m == "Paid in full within 3 months" & is.na(lshock_amt_paid_3m) == TRUE ~ "100%",
+       mutate(lshock_amt_paid_3m = case_when(lshock_paid_3m == "Not paid at all within 3 months" & is.na(lshock_amt_paid_3m) ~ "0%",
+                                                 lshock_paid_3m == "Paid in full within 3 months" & is.na(lshock_amt_paid_3m) ~ "100%",
                                                  TRUE ~ lshock_amt_paid_3m)) %>%
        # add and reorder factor levels
        mutate(lshock_amt_paid_3m = factor(lshock_amt_paid_3m, levels = c("0%", "About 0%", "About 50%", "About 75%", "About 100%", "100%"), ordered = TRUE)) %>%
@@ -367,7 +367,7 @@ cleaned <- cleaned %>%
                                                income_upper_bound < 25000 & income_25 > income_upper_bound ~ 1,
                                                TRUE ~ 0),
               # missingness in reported income value but not in income bin
-              income_missing_value = case_when(is.na(income_25) == TRUE & is.na(income_bin) == FALSE ~ 1,
+              income_missing_value = case_when(is.na(income_25) & !is.na(income_bin) ~ 1,
                                               TRUE ~ 0)) %>%
        # impute income values for responses with errors
        mutate(lshock_hh_inc = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ income_bin_midpoint, 
@@ -413,8 +413,8 @@ cleaned <- cleaned %>%
        # none of the respondents have multiple reported shock months - safe to coalesce into one variable if needed for analysis of shock timing
        mutate(lshock_month = coalesce(shock_month_1, shock_month_2, shock_month_3, shock_month_4, shock_month_5)) %>%
        # impute values if shock window is given but shock month is missing OR shock month falls outside of shock window 
-       mutate(lshock_month_imputed = case_when(is.na(shock_window) == FALSE & is.na(lshock_month) == TRUE ~ 1,
-                                         is.na(shock_window) == FALSE & (lshock_month < shock_window_lower | lshock_month > shock_window_upper) ~ 1,
+       mutate(lshock_month_imputed = case_when(!is.na(shock_window) & is.na(lshock_month) ~ 1,
+                                         !is.na(shock_window) & (lshock_month < shock_window_lower | lshock_month > shock_window_upper) ~ 1,
                                          TRUE ~ 0),
        lshock_month = case_when(lshock_month_imputed == 1 ~ shock_window_midpoint,
                                         TRUE ~ lshock_month)) %>%
@@ -438,7 +438,9 @@ cleaned <- cleaned %>%
        # clean prevention as dummy
        mutate(lshock_prev = case_when(lshock_prev == "Yes, we could have prevented it or reduced the cost of the expense (for example, with preventive care, maintenance, or insurance)" ~ 1,
                                           lshock_prev == "No, there was nothing we could have done to prevent it or reduce the cost" ~ 0,
-                                          TRUE ~ NA))
+                                          TRUE ~ NA)) %>%
+       #relocate predictablity/preventability variables ot be after the shock month vars
+       relocate(lshock_pred, lshock_prev, .after = lshock_month_imputed)
 
 #### Liquidity and credit constraints -------------------------------------------------------------
 cleaned <- cleaned %>%
@@ -462,7 +464,10 @@ cleaned <- cleaned %>%
                                                  labels = c("No credit", "Insufficient credit", "Sufficient credit"),
                                                  ordered = TRUE),
               hh_credit_score = factor(hh_credit_score, levels = c("300-540",  "540-600", "600-660", "660-720", "720-780", "780-850"),
-                                                        ordered = TRUE))
+                                                        ordered = TRUE)) %>%
+       # relocate liquidity and credit constraint variables to be after preventability variables
+       relocate(c("hh_liquidity", "hh_emergency_fund", "hh_credit", "hh_credit_score"), .after = lshock_prev)
+
 
 
 #### Other shocks -------------------------------------------------------------
@@ -474,4 +479,33 @@ cleaned <- cleaned %>%
        mutate(other_shocks = case_when(other_shocks == "Yes" ~ 1,
                                       other_shocks == "No" ~ 0,
                                       TRUE ~ NA),
-              other_shock_totsize = as.numeric(other_shock_totsize))
+              other_shock_totsize = as.numeric(other_shock_totsize)) %>%
+       # relocate other shock variables to be after hh credit score 
+       relocate(c("other_shocks", "other_shock_totsize"), .after = hh_credit_score)
+
+#### Adverse outcomes -------------------------------------------------------------
+cleaned <- cleaned %>%
+       # rename variables for conciseness
+       rename(pastdue_lcc_6m = `I became 90 or more days past due on a loan or credit card:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
+              pastdue_rm_6m = `I became 90 or more days past due on my rent or mortgage:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
+              collections_6m = `One or more of debts was sent to a collection agency:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
+              utility_cutoff_6m = `I received a utility shutoff notice:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
+              repo_notice_6m = `I received an auto repossession notice:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
+              eviction_notice_6m = `I received an eviction or foreclosure notice:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
+              no_adverse_outcome_6m = `None of the above happened:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
+              dont_recall_outcome_6m = `I’m not sure / I don’t recall:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
+              decline_to_answer_outcome_6m = `I prefer not to answer:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`) %>%
+       # create helper variable: dummy for whether they responded to at least one category
+       mutate(resp_temp = if_any(c(pastdue_lcc_6m, pastdue_rm_6m, collections_6m, utility_cutoff_6m,
+                         repo_notice_6m, eviction_notice_6m, no_adverse_outcome_6m),
+                       ~ !is.na(.x))) %>%
+       # turn underlying variables into dummies
+       mutate(across(c(pastdue_lcc_6m, pastdue_rm_6m, collections_6m, utility_cutoff_6m, repo_notice_6m, eviction_notice_6m, no_adverse_outcome_6m), 
+                     ~ case_when(!is.na(.x) ~ 1, # 1 if checked
+                                 is.na(.x) == TRUE & resp_temp > 0 ~ 0, # 0 if did not check but checked at least one other category
+                                 TRUE ~ NA)))  %>% # NA otherwise e.g. did not check any category including specific outcomes, "don't recall" or declined to answer, OR checked "don't recall" or "decline to answer"
+       #drop temp variables and others we won't use
+       select(-c(resp_temp, dont_recall_outcome_6m, decline_to_answer_outcome_6m)) %>%
+       # relocate adverse outcome variables to be at the end of the dataset
+       relocate(c(pastdue_lcc_6m, pastdue_rm_6m, collections_6m, utility_cutoff_6m, repo_notice_6m, eviction_notice_6m, no_adverse_outcome_6m), 
+                                                 .after = other_shock_totsize)
