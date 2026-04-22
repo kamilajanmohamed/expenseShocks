@@ -439,3 +439,27 @@ cleaned <- cleaned %>%
        mutate(lshock_prev = case_when(lshock_prev == "Yes, we could have prevented it or reduced the cost of the expense (for example, with preventive care, maintenance, or insurance)" ~ 1,
                                           lshock_prev == "No, there was nothing we could have done to prevent it or reduce the cost" ~ 0,
                                           TRUE ~ NA))
+
+#### Liquidity and credit constraints -------------------------------------------------------------
+cleaned <- cleaned %>%
+       #rename variables for conciseness
+       rename(hh_liquidity = `At the time you had this large and unexpected expense, about how much money did your household have in all your checking and savings accounts (excluding retirement accounts)?`,
+              hh_emergency_fund = `At the time you had this large and unexpected expense, about how many months of your household’s typical monthly expenses could you cover using money you had saved in all your checking and savings accounts (excluding retirement accounts)?`,
+              hh_credit = `At the time you had this large and unexpected expense, did you have access to a credit card that could cover the full expense cost?`,
+              hh_credit_score = `At the time you had this large and unexpected expense, what was your credit score?`) %>%
+       # clean variables
+       mutate(hh_liquidity = factor(hh_liquidity, levels = c("$0 - $100", "$100 - $500", "$500 - $1,000", "$1,000 - $2,500" ,  
+                                                               "$2,500 - $5,000" , "$5,000 - $7,500", "$7,500 - $10,000", 
+                                                               "$10,000 - $20,000", "$20,000 - $50,000",  "More than $50,000"),
+                                                               ordered = TRUE),
+              hh_emergency_fund = factor(hh_emergency_fund, levels = c("Less than 1 month", "1 month", "2 months", "3 months", 
+                                                                      "4 months", "5 months", "6 months", "7 months", "8 months", "9 months", "10 months", "11 months", 
+                                                                      "12 months", "More than 12 months"),
+                                                               ordered = TRUE),
+              hh_credit = factor(hh_credit, levels = c("No, I did not have access to any credit cards", 
+                                                        "Yes, but I did not have enough available credit to cover the full expense", 
+                                                        "Yes, and I had enough available credit to cover the full expense"), 
+                                                 labels = c("No credit", "Insufficient credit", "Sufficient credit"),
+                                                 ordered = TRUE),
+              hh_credit_score = factor(hh_credit_score, levels = c("300-540",  "540-600", "600-660", "660-720", "720-780", "780-850"),
+                                                        ordered = TRUE))
