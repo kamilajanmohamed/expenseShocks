@@ -459,18 +459,10 @@ cleaned <- cleaned %>%
               eviction_notice_6m = `I received an eviction or foreclosure notice:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
               no_adverse_outcome_6m = `None of the above happened:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
               dont_recall_outcome_6m = `I’m not sure / I don’t recall:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`,
-              decline_to_answer_outcome_6m = `I prefer not to answer:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`) %>%
-       # create helper variable: dummy for whether they responded to at least one category
-       mutate(resp_temp = if_any(c(pastdue_lcc_6m, pastdue_rm_6m, collections_6m, utility_cutoff_6m,
-                         repo_notice_6m, eviction_notice_6m, no_adverse_outcome_6m),
-                       ~ !is.na(.x))) %>%
-       # turn underlying variables into dummies
-       mutate(across(c(pastdue_lcc_6m, pastdue_rm_6m, collections_6m, utility_cutoff_6m, repo_notice_6m, eviction_notice_6m, no_adverse_outcome_6m), 
-                     ~ case_when(!is.na(.x) ~ 1, # 1 if checked
-                                 is.na(.x) == TRUE & resp_temp > 0 ~ 0, # 0 if did not check but checked at least one other category
-                                 TRUE ~ NA)))  %>% # NA otherwise e.g. did not check any category including specific outcomes, "don't recall" or declined to answer, OR checked "don't recall" or "decline to answer"
-       #drop temp variables and others we won't use
-       select(-c(resp_temp, dont_recall_outcome_6m, decline_to_answer_outcome_6m)) %>%
+              decline_to_answer_outcome_6m = `I prefer not to answer:Within six months after this large and unexpected expense, did any of the following occur? Please select all that occurred. Within six months...`)               
+   
+# Apply helper function
+cleaned <- process_adverse_outcomes(cleaned, "_6m") %>%
        # relocate adverse outcome variables to be at the end of the dataset
        relocate(c(pastdue_lcc_6m, pastdue_rm_6m, collections_6m, utility_cutoff_6m, repo_notice_6m, eviction_notice_6m, no_adverse_outcome_6m), 
                                                  .after = other_shock_totsize)
@@ -516,19 +508,10 @@ cleaned <- cleaned %>%
               eviction_notice_oct25 = `I received an eviction or foreclosure notice:Since October 2025, did any of the following occur? Please select all that occurred. Since October 2025...`,
               no_adverse_outcome_oct25 = `None of the above happened:Since October 2025, did any of the following occur? Please select all that occurred. Since October 2025...`,
               dont_recall_outcome_oct25 = `I’m not sure / I don’t recall:Since October 2025, did any of the following occur? Please select all that occurred. Since October 2025...`,
-              decline_to_answer_outcome_oct25 = `I prefer not to answer:Since October 2025, did any of the following occur? Please select all that occurred. Since October 2025...`) %>%
-       # create helper variable: dummy for whether they responded to at least one category
-       mutate(resp_temp = if_any(c(pastdue_lcc_oct25, pastdue_rm_oct25, collections_oct25, utility_cutoff_oct25,
-                         repo_notice_oct25, eviction_notice_oct25, no_adverse_outcome_oct25),
-                       ~ !is.na(.x))) %>%
-       # turn underlying variables into dummies
-       mutate(across(c(pastdue_lcc_oct25, pastdue_rm_oct25, collections_oct25, utility_cutoff_oct25, repo_notice_oct25, eviction_notice_oct25, no_adverse_outcome_oct25), 
-                     ~ case_when(!is.na(.x) ~ 1, # 1 if checked
-                                 is.na(.x) == TRUE & resp_temp > 0 ~ 0, # 0 if did not check but checked at least one other category
-                                 TRUE ~ NA)))  %>% # NA otherwise e.g. did not check any category including specific outcomes, "don't recall" or declined to answer, OR checked "don't recall" or "decline to answer"
-       #drop temp variables and others we won't use
-       select(-c(resp_temp, dont_recall_outcome_oct25, decline_to_answer_outcome_oct25)) %>%
-       # relocate adverse outcome variables to be at the end of the dataset
+              decline_to_answer_outcome_oct25 = `I prefer not to answer:Since October 2025, did any of the following occur? Please select all that occurred. Since October 2025...`)
+
+# apply helper function
+cleaned <- process_adverse_outcomes(cleaned, "_oct25") %>%
        relocate(c(pastdue_lcc_oct25, pastdue_rm_oct25, collections_oct25, utility_cutoff_oct25, repo_notice_oct25, eviction_notice_oct25, no_adverse_outcome_oct25), 
                                                  .after = hh_credit_score_oct25)
 

@@ -34,3 +34,23 @@ impute_bin  <- function(dataframe, bin_var, value_var, threshold, out_col, imput
         ) %>%
         select(-c(bin_var, lower_bound, upper_bound, midpoint, reporting_error, missing_value))
 }
+
+# Process advrerse outcomes ------------------------------------------------------------
+process_adverse_outcomes <- function(data, suffix) {
+
+  # add suffix to variable names 
+  vars <- paste0(c("pastdue_lcc", "pastdue_rm", "collections",
+                   "utility_cutoff", "repo_notice", "eviction_notice",
+                   "no_adverse_outcome"), suffix)
+  #variables to drop
+  drop <- paste0(c("dont_recall_outcome", "decline_to_answer_outcome"), suffix)
+  # 
+  data %>%
+  # create helper variable: dummy for whether they responded to at least one category
+    mutate(resp_temp = if_any(all_of(vars), ~ !is.na(.x))) %>%
+     # turn underlying variables into dummies
+    mutate(across(all_of(vars), ~ case_when(!is.na(.x) ~ 1,
+                                             is.na(.x) & resp_temp > 0 ~ 0,
+                                             TRUE ~ NA))) %>%
+    select(-c(resp_temp, all_of(drop)))
+}
