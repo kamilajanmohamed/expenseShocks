@@ -8,6 +8,9 @@
 #run once per session - this will be the root directory for all file paths in this project
 source("00_setup/config.R")
 
+# Call functions ------------------------------------------------------------
+source("code/01_clean/_fun.R")
+
 # Load packages ------------------------------------------------------------
 library(tidyverse)
 library(readxl)
@@ -206,32 +209,11 @@ cleaned <- cleaned %>%
          expense_value_over_20k = `You previously stated $20,000 or more. Specifically, what was the approximate total cost for this large and unexpected expense?`) %>%
        # coalesce the reported expense values into one column 
        mutate(lshock_size = coalesce(expense_value_under_20k, expense_value_over_20k)) %>%
-         # create bin variables
-         mutate(
-              # lower bound of expense bin variable
-              lower_bound =  case_when(str_detect(expense_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub("-.*", "", expense_bin)))),
-                                                                      str_detect(expense_bin, "More than") ~ 20000,
-                                                                      TRUE ~ NA_real_),
-              # upper bound of expense bin variable
-              upper_bound = case_when(str_detect(expense_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub(".*-", "", expense_bin)))),
-                                                                      str_detect(expense_bin, "More than") ~ 20000,
-                                                                      TRUE ~ NA_real_),
-              bin_midpoint = (lower_bound+upper_bound)/2) %>% 
-       # create helper dummies 
-       mutate(
-              # impute if the expense value is less than the lower bound of the bin or if the expense value is greater than the upper bound of the bin (for bins under 20k)
-              reporting_error = case_when(lshock_size < lower_bound ~ 1,
-                                          upper_bound < 20000 &lshock_size > upper_bound ~ 1,
-                                                 TRUE ~ 0),
-              # missingness in reported expense value but not in expense bin
-              missing_expense_value = case_when(is.na(lshock_size) & !is.na(expense_bin) ~ 1,
-                                              TRUE ~ 0)) %>%
-       # impute expense shock sizes for responses with errors 
-       mutate(lshock_size = case_when(reporting_error == 1 | missing_expense_value == 1 ~ bin_midpoint, 
-                                                     TRUE ~lshock_size),
-             lshock_size_imputed = case_when(reporting_error == 1 | missing_expense_value == 1 ~ 1,
-                                                            TRUE ~ 0)) %>%
-       select(-c(expense_bin, lower_bound, upper_bound, bin_midpoint, reporting_error, missing_expense_value, expense_value_over_20k, expense_value_under_20k)) %>%
+       # drop individual expense vars     
+       select(-c(expense_value_under_20k, expense_value_over_20k))
+
+# clean expenses using bin function
+cleaned <- impute_bin(cleaned, "expense_bin", "lshock_size", 20000, "lshock_size", "lshock_size_imputed") %>%
        # rearrange expense shock variables
        relocate(c("lshock_size", "lshock_size_imputed"), .after = "lshock_type")
 
@@ -348,35 +330,13 @@ cleaned <- cleaned %>%
               income_value_under_25k = `You previously stated [question('value'), id='11']. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) at the time you had this large and unexpected expense?`,
               income_over_25k = `You previously stated $25,000 or more. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) at the time you had this large and unexpected expense?`) %>%
        # coalesce the reported income values into one column
-       mutate(income_25 = coalesce(income_value_under_25k, income_over_25k)) %>%
-       # create bin variables
-       mutate(
-              # lower bound of income bin variable
-              income_lower_bound =  case_when(str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub("-.*", "", income_bin)))),
-                                                                      str_detect(income_bin, "More than") ~ 25000,
-                                                                      TRUE ~ NA), 
-              # upper bound of income bin variable
-              income_upper_bound = case_when(str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub(".*-", "", income_bin)))),
-                                                                      str_detect(income_bin, "More than") ~ 25000,
-                                                                      TRUE ~ NA),
-              income_bin_midpoint = (income_lower_bound+income_upper_bound)/2) %>%
-       # create helper dummies
-       mutate(
-              # impute if income value less than lower bound of bin or if income value greater than upper bound of bin (for bins under 25k)
-              income_reporting_error = case_when(income_25 < income_lower_bound ~ 1,
-                                               income_upper_bound < 25000 & income_25 > income_upper_bound ~ 1,
-                                               TRUE ~ 0),
-              # missingness in reported income value but not in income bin
-              income_missing_value = case_when(is.na(income_25) & !is.na(income_bin) ~ 1,
-                                              TRUE ~ 0)) %>%
-       # impute income values for responses with errors
-       mutate(lshock_hh_inc = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ income_bin_midpoint, 
-                                        TRUE ~ income_25),
-              lshock_hh_inc_imputed = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ 1,
-                                                 TRUE ~ 0)) %>%
-       select(-c(income_bin, income_lower_bound, income_upper_bound, income_bin_midpoint, income_value_under_25k, income_over_25k, income_reporting_error, income_missing_value)             
-       ) %>%
-       # relocate new income variables to be next to other shock variables
+       mutate(lshock_hh_inc = coalesce(income_value_under_25k, income_over_25k)) %>%
+       # drop individual income vars
+       select(-c(income_value_under_25k, income_over_25k))
+
+# clean income using bin function
+cleaned <- impute_bin(cleaned, "income_bin", "lshock_hh_inc", 25000, "lshock_hh_inc", "lshock_hh_inc_imputed") %>%
+       # rearrange expense shock variables
        relocate(c("lshock_hh_inc", "lshock_hh_inc_imputed"), .after = "lshock_paid_other")
 
 #### Timing of shock -------------------------------------------------------------
@@ -520,36 +480,18 @@ cleaned <- cleaned %>%
               hh_emergency_fund_oct25 = `In October 2025, about how many months of your household’s typical monthly expenses could you cover using money you had saved in all your checking and savings accounts (excluding retirement accounts)?`,
               hh_credit_score_oct25 = `In October 2025, what was your credit score?`) %>%
        # coalesce the reported income values into one column
-       mutate(income_25 = coalesce(under_25k, over_25k)) %>%
-       # create bin variables
-       mutate(
-              # lower bound of income bin variable
-              income_lower_bound =  case_when(`str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub("-.*", "", income_bin)))),
-                                                                      str_detect(income_bin, "More than") ~ 25000,
-                                                                      TRUE ~ NA)`, 
-              # upper bound of income bin variable
-              income_upper_bound = case_when(str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub(".*-", "", income_bin)))),
-                                                                      str_detect(income_bin, "More than") ~ 25000,
-                                                                      TRUE ~ NA),
-              income_bin_midpoint = (income_lower_bound+income_upper_bound)/2) %>%
-       # create helper dummies
-       mutate(
-              # impute if income value less than lower bound of bin or if income value greater than upper bound of bin (for bins under 25k)
-              income_reporting_error = case_when(income_25 < income_lower_bound ~ 1,
-                                               income_upper_bound < 25000 & income_25 > income_upper_bound ~ 1,
-                                               TRUE ~ 0),
-              # missingness in reported income value but not in income bin
-              income_missing_value = case_when(is.na(income_25) & !is.na(income_bin) ~ 1,
-                                              TRUE ~ 0)) %>%
-       # impute income values for responses with errors
-       mutate(hh_inc_oct25 = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ income_bin_midpoint, 
-                                        TRUE ~ income_25),
-              hh_inc_imputed_oct25 = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ 1,
-                                                 TRUE ~ 0)) %>%
-       # drop helper variables
-       select(-c(income_bin, income_lower_bound, income_upper_bound, income_bin_midpoint, under_25k, over_25k, income_reporting_error, income_missing_value)) %>%
-       # clean liquidity, emergency fund and credit score variables
-       mutate(hh_liquidity_oct25 = factor(hh_liquidity_oct25, levels = c("$0 - $100", "$100 - $500", "$500 - $1,000", "$1,000 - $2,500" ,  
+       mutate(hh_inc_oct25 = coalesce(under_25k, over_25k)) %>%
+       # drop individual income vars
+       select(-c(under_25k, over_25k))
+
+# clean income using bin function
+cleaned <- impute_bin(cleaned, "income_bin", "hh_inc_oct25", 25000, "hh_inc_oct25", "hh_inc_oct25_imputed") %>%
+       # rearrange expense shock variables
+       relocate(c("hh_inc_oct25", "hh_inc_oct25_imputed"), .after = "lshock_paid_other")
+
+# clean liquidity, emergency fund and credit score variables
+cleaned <- cleaned %>%
+        mutate(hh_liquidity_oct25 = factor(hh_liquidity_oct25, levels = c("$0 - $100", "$100 - $500", "$500 - $1,000", "$1,000 - $2,500" ,  
                                                                "$2,500 - $5,000" , "$5,000 - $7,500", "$7,500 - $10,000", "$10,000 - $20,000", "$20,000 - $50,000",  "More than $50,000"),
                                                                ordered = TRUE),
               hh_emergency_fund_oct25 = factor(hh_emergency_fund_oct25, levels = c("Less than 1 month", "1 month", "2 months", "3 months", 
@@ -559,7 +501,7 @@ cleaned <- cleaned %>%
               hh_credit_score_oct25 = factor(hh_credit_score_oct25, levels = c("300-540",  "540-600", "600-660", "660-720", "720-780", "780-850"),
                                                         ordered = TRUE)) %>%
        # relocate new variables to be next to other shock variables
-       relocate(c("hh_inc_oct25", "hh_inc_imputed_oct25", "hh_liquidity_oct25", "hh_emergency_fund_oct25", "hh_credit_score_oct25"), .after = no_adverse_outcome_6m)    
+       relocate(c("hh_inc_oct25", "hh_inc_oct25_imputed", "hh_liquidity_oct25", "hh_emergency_fund_oct25", "hh_credit_score_oct25"), .after = no_adverse_outcome_6m)    
 
 #### Adverse outcomes oct 2025 -------------------------------------------------------------
 cleaned <- cleaned %>%

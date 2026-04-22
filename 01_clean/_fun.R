@@ -1,0 +1,36 @@
+#############################################################
+# Author: Kamila Janmohamed
+# Date: 2026-04-22
+# Description: Helper functions for cleaning survey data
+#############################################################
+
+# Bin imputation ------------------------------------------------------------
+impute_bin  <- function(dataframe, bin_var, value_var, threshold, out_col, imputed_col) {
+
+       dataframe %>%
+        mutate(
+            # extract lower bin bound
+            lower_bound = case_when(str_detect(dataframe[[bin_var]], "-") ~
+                           as.numeric(gsub("[^0-9]", "", sub("-.*", "", dataframe[[bin_var]]))),
+                         str_detect(dataframe[[bin_var]], "More than") ~ threshold,
+                         TRUE ~ NA_real_),
+            # extract upper bin bound
+            upper_bound = case_when(str_detect(dataframe[[bin_var]], "-") ~
+                           as.numeric(gsub("[^0-9]", "", sub(".*-", "", dataframe[[bin_var]]))),
+                         str_detect(dataframe[[bin_var]], "More than") ~ threshold,
+                         TRUE ~ NA_real_),
+            # calculate bin midpoint
+            midpoint = (lower_bound + upper_bound) / 2,
+            # identify errors where value is outside of bin bounds
+            reporting_error  = case_when(dataframe[[value_var]] < lower_bound ~ 1,
+                        upper_bound < threshold & dataframe[[value_var]] > upper_bound ~ 1,
+                        TRUE ~ 0),
+            # identify missing values where value is NA but bin is not NA
+            missing_value = if_else(is.na(dataframe[[value_var]]) & !is.na(dataframe[[bin_var]]), 1, 0),
+            # impute value with bin midpoint if error or missing, otherwise keep original value
+            "{out_col}"     := case_when(reporting_error == 1 | missing_value == 1 ~ midpoint, TRUE ~ .data[[value_var]]),
+            # create imputed indicator variable where 1 indicates imputed value and 0 indicates original value
+            "{imputed_col}" := if_else(reporting_error == 1 | missing_value == 1, 1L, 0L)          
+        ) %>%
+        select(-c(bin_var, lower_bound, upper_bound, midpoint, reporting_error, missing_value))
+}
