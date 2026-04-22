@@ -509,3 +509,54 @@ cleaned <- cleaned %>%
        # relocate adverse outcome variables to be at the end of the dataset
        relocate(c(pastdue_lcc_6m, pastdue_rm_6m, collections_6m, utility_cutoff_6m, repo_notice_6m, eviction_notice_6m, no_adverse_outcome_6m), 
                                                  .after = other_shock_totsize)
+
+#### HH liqudity and credit constraints  Oct 2025 -------------------------------------------------------------
+cleaned <- cleaned %>%
+       # rename variables for conciseness
+       rename(income_bin = `In October 2025, what was your household’s monthly take-home income (your household's monthly income after taxes). Please include all sources of income such as income from jobs, any social security or government payments, and any retirement income.`,
+              under_25k = `You previously stated [question('value'), id='38']. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) in October 2025?`,
+              over_25k = `You previously stated $25,000 or more. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) in October 2025?`,
+              hh_liquidity_oct25 = `In October 2025, about how much money did your household have in all your checking and savings accounts (excluding retirement accounts)?`,
+              hh_emergency_fund_oct25 = `In October 2025, about how many months of your household’s typical monthly expenses could you cover using money you had saved in all your checking and savings accounts (excluding retirement accounts)?`,
+              hh_credit_score_oct25 = `In October 2025, what was your credit score?`) %>%
+       # coalesce the reported income values into one column
+       mutate(income_25 = coalesce(under_25k, over_25k)) %>%
+       # create bin variables
+       mutate(
+              # lower bound of income bin variable
+              income_lower_bound =  case_when(str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub("-.*", "", income_bin)))),
+                                                                      str_detect(income_bin, "More than") ~ 25000,
+                                                                      TRUE ~ NA), 
+              # upper bound of income bin variable
+              income_upper_bound = case_when(str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub(".*-", "", income_bin)))),
+                                                                      str_detect(income_bin, "More than") ~ 25000,
+                                                                      TRUE ~ NA),
+              income_bin_midpoint = (income_lower_bound+income_upper_bound)/2) %>%
+       # create helper dummies
+       mutate(
+              # impute if income value less than lower bound of bin or if income value greater than upper bound of bin (for bins under 25k)
+              income_reporting_error = case_when(income_25 < income_lower_bound ~ 1,
+                                               income_upper_bound < 25000 & income_25 > income_upper_bound ~ 1,
+                                               TRUE ~ 0),
+              # missingness in reported income value but not in income bin
+              income_missing_value = case_when(is.na(income_25) & !is.na(income_bin) ~ 1,
+                                              TRUE ~ 0)) %>%
+       # impute income values for responses with errors
+       mutate(hh_inc_oct25 = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ income_bin_midpoint, 
+                                        TRUE ~ income_25),
+              hh_inc_imputed_oct25 = case_when(income_reporting_error == 1 | income_missing_value == 1 ~ 1,
+                                                 TRUE ~ 0)) %>%
+       # drop helper variables
+       select(-c(income_bin, income_lower_bound, income_upper_bound, income_bin_midpoint, under_25k, over_25k, income_reporting_error, income_missing_value)) %>%
+       # clean liquidity, emergency fund and credit score variables
+       mutate(hh_liquidity_oct25 = factor(hh_liquidity_oct25, levels = c("$0 - $100", "$100 - $500", "$500 - $1,000", "$1,000 - $2,500" ,  
+                                                               "$2,500 - $5,000" , "$5,000 - $7,500", "$7,500 - $10,000", "$10,000 - $20,000", "$20,000 - $50,000",  "More than $50,000"),
+                                                               ordered = TRUE),
+              hh_emergency_fund_oct25 = factor(hh_emergency_fund_oct25, levels = c("Less than 1 month", "1 month", "2 months", "3 months", 
+                                                                      "4 months", "5 months", "6 months", "7 months", "8 months", "9 months", "10 months", "11 months", 
+                                                                      "12 months", "More than 12 months"),
+                                                               ordered = TRUE),
+              hh_credit_score_oct25 = factor(hh_credit_score_oct25, levels = c("300-540",  "540-600", "600-660", "660-720", "720-780", "780-850"),
+                                                        ordered = TRUE)) %>%
+       # relocate new variables to be next to other shock variables
+       relocate(c("hh_inc_oct25", "hh_inc_imputed_oct25", "hh_liquidity_oct25", "hh_emergency_fund_oct25", "hh_credit_score_oct25"), .after = no_adverse_outcome_6m)    
