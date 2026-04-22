@@ -463,3 +463,15 @@ cleaned <- cleaned %>%
                                                  ordered = TRUE),
               hh_credit_score = factor(hh_credit_score, levels = c("300-540",  "540-600", "600-660", "660-720", "720-780", "780-850"),
                                                         ordered = TRUE))
+
+
+#### Other shocks -------------------------------------------------------------
+cleaned <- cleaned %>%
+       # rename variables for conciseness
+       rename(other_shocks = `Looking back at when you experienced this large and unexpected expense, did you experience any additional, smaller unexpected expenses during the same month?`,
+              other_shock_totsize = `To the best of your memory, what was the approximate total cost for all unexpected expenses you experienced that month?`) %>%
+       # clean other shocks variables
+       mutate(other_shocks = case_when(other_shocks == "Yes" ~ 1,
+                                      other_shocks == "No" ~ 0,
+                                      TRUE ~ NA),
+              other_shock_totsize = as.numeric(other_shock_totsize))
