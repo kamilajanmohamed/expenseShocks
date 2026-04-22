@@ -15,6 +15,15 @@ source("code/01_clean/_fun.R")
 library(tidyverse)
 library(readxl)
 
+# Set factor levels for repeat vars ------------------------------------------------------------
+LIQUIDITY_LEVELS <- c("$0 - $100", "$100 - $500", "$500 - $1,000", "$1,000 - $2,500" ,  
+                     "$2,500 - $5,000" , "$5,000 - $7,500", "$7,500 - $10,000", 
+                     "$10,000 - $20,000", "$20,000 - $50,000",  "More than $50,000")
+EMERGENCY_FUND_LEVELS <- c("Less than 1 month", "1 month", "2 months", "3 months",
+                            "4 months", "5 months", "6 months", "7 months", "8 months", "9 months", "10 months", "11 months", 
+                            "12 months", "More than 12 months")
+CREDIT_SCORE_LEVELS <-  c("300-540",  "540-600", "600-660", "660-720", "720-780", "780-850")
+
 # Load data ------------------------------------------------------------
 df <- read_excel("data/raw/Expense Shock Final Results.xlsx")
 
@@ -410,20 +419,16 @@ cleaned <- cleaned %>%
               hh_credit = `At the time you had this large and unexpected expense, did you have access to a credit card that could cover the full expense cost?`,
               hh_credit_score = `At the time you had this large and unexpected expense, what was your credit score?`) %>%
        # clean variables
-       mutate(hh_liquidity = factor(hh_liquidity, levels = c("$0 - $100", "$100 - $500", "$500 - $1,000", "$1,000 - $2,500" ,  
-                                                               "$2,500 - $5,000" , "$5,000 - $7,500", "$7,500 - $10,000", 
-                                                               "$10,000 - $20,000", "$20,000 - $50,000",  "More than $50,000"),
+       mutate(hh_liquidity = factor(hh_liquidity, levels = LIQUIDITY_LEVELS,
                                                                ordered = TRUE),
-              hh_emergency_fund = factor(hh_emergency_fund, levels = c("Less than 1 month", "1 month", "2 months", "3 months", 
-                                                                      "4 months", "5 months", "6 months", "7 months", "8 months", "9 months", "10 months", "11 months", 
-                                                                      "12 months", "More than 12 months"),
+              hh_emergency_fund = factor(hh_emergency_fund, levels = EMERGENCY_FUND_LEVELS,
                                                                ordered = TRUE),
               hh_credit = factor(hh_credit, levels = c("No, I did not have access to any credit cards", 
                                                         "Yes, but I did not have enough available credit to cover the full expense", 
                                                         "Yes, and I had enough available credit to cover the full expense"), 
                                                  labels = c("No credit", "Insufficient credit", "Sufficient credit"),
                                                  ordered = TRUE),
-              hh_credit_score = factor(hh_credit_score, levels = c("300-540",  "540-600", "600-660", "660-720", "720-780", "780-850"),
+              hh_credit_score = factor(hh_credit_score, levels = CREDIT_SCORE_LEVELS,
                                                         ordered = TRUE)) %>%
        # relocate liquidity and credit constraint variables to be after preventability variables
        relocate(c("hh_liquidity", "hh_emergency_fund", "hh_credit", "hh_credit_score"), .after = lshock_prev)
@@ -491,14 +496,11 @@ cleaned <- impute_bin(cleaned, "income_bin", "hh_inc_oct25", 25000, "hh_inc_oct2
 
 # clean liquidity, emergency fund and credit score variables
 cleaned <- cleaned %>%
-        mutate(hh_liquidity_oct25 = factor(hh_liquidity_oct25, levels = c("$0 - $100", "$100 - $500", "$500 - $1,000", "$1,000 - $2,500" ,  
-                                                               "$2,500 - $5,000" , "$5,000 - $7,500", "$7,500 - $10,000", "$10,000 - $20,000", "$20,000 - $50,000",  "More than $50,000"),
+        mutate(hh_liquidity_oct25 = factor(hh_liquidity_oct25, levels = LIQUIDITY_LEVELS,
                                                                ordered = TRUE),
-              hh_emergency_fund_oct25 = factor(hh_emergency_fund_oct25, levels = c("Less than 1 month", "1 month", "2 months", "3 months", 
-                                                                      "4 months", "5 months", "6 months", "7 months", "8 months", "9 months", "10 months", "11 months", 
-                                                                      "12 months", "More than 12 months"),
+              hh_emergency_fund_oct25 = factor(hh_emergency_fund_oct25, levels = EMERGENCY_FUND_LEVELS,
                                                                ordered = TRUE),
-              hh_credit_score_oct25 = factor(hh_credit_score_oct25, levels = c("300-540",  "540-600", "600-660", "660-720", "720-780", "780-850"),
+              hh_credit_score_oct25 = factor(hh_credit_score_oct25, levels = CREDIT_SCORE_LEVELS,
                                                         ordered = TRUE)) %>%
        # relocate new variables to be next to other shock variables
        relocate(c("hh_inc_oct25", "hh_inc_oct25_imputed", "hh_liquidity_oct25", "hh_emergency_fund_oct25", "hh_credit_score_oct25"), .after = no_adverse_outcome_6m)    
