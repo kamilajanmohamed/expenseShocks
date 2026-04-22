@@ -524,9 +524,9 @@ cleaned <- cleaned %>%
        # create bin variables
        mutate(
               # lower bound of income bin variable
-              income_lower_bound =  case_when(str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub("-.*", "", income_bin)))),
+              income_lower_bound =  case_when(`str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub("-.*", "", income_bin)))),
                                                                       str_detect(income_bin, "More than") ~ 25000,
-                                                                      TRUE ~ NA), 
+                                                                      TRUE ~ NA)`, 
               # upper bound of income bin variable
               income_upper_bound = case_when(str_detect(income_bin, "-") ~ (as.numeric(gsub("[^0-9]", "", sub(".*-", "", income_bin)))),
                                                                       str_detect(income_bin, "More than") ~ 25000,
@@ -587,3 +587,13 @@ cleaned <- cleaned %>%
        # relocate adverse outcome variables to be at the end of the dataset
        relocate(c(pastdue_lcc_oct25, pastdue_rm_oct25, collections_oct25, utility_cutoff_oct25, repo_notice_oct25, eviction_notice_oct25, no_adverse_outcome_oct25), 
                                                  .after = hh_credit_score_oct25)
+
+#### Clean  shock forecasting -------------------------------------------------------------
+cleaned <- cleaned %>%
+       # rename variables for conciseness
+       rename(shock_forecast = `Looking forward to the next 12 months, what are the chances your household will experience a large and unexpected expense?`) %>%
+       # clean var
+       mutate(shock_forecast = case_when(str_detect(shock_forecast, "%") ~ (as.numeric(gsub("[^0-9]", "", sub("%.*", "", shock_forecast))))/100,
+                                          TRUE ~  as.numeric(shock_forecast))) %>%
+       # relocate variable to be after shock predictability variable
+       relocate(shock_forecast, .after = no_adverse_outcome_oct25)
