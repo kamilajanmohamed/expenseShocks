@@ -12,7 +12,7 @@ impute_bin  <- function(dataframe, bin_var, value_var, threshold, out_col, imput
             # extract lower bin bound
             lower_bound = case_when(str_detect(dataframe[[bin_var]], "-") ~
                            as.numeric(gsub("[^0-9]", "", sub("-.*", "", dataframe[[bin_var]]))),
-                         str_detect(dataframe[[bin_var]], "More than") ~ threshold,
+                         str_detect(dataframe[[bin_var]], "More than| \\+") ~ threshold,
                          TRUE ~ NA_real_),
             # extract upper bin bound
             upper_bound = case_when(str_detect(dataframe[[bin_var]], "-") ~

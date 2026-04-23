@@ -43,25 +43,17 @@ cleaned <- df %>%
     state = user_state_name,
     urbanicity = user_urbanicity
     ) %>%
+    # clean vars
   mutate(
     user_id = as.factor(user_id),
     date = as.Date(date),
     complete_response = case_when(Status == "Complete" ~ 1, 
                                   is.na(Status) ~ NA,
-                                  TRUE ~ 0),
-    ### age vars ###
+                                  TRUE ~ 0), 
     age_bucket = factor(age_bucket,
                                levels  = c("21-24", "25-34", "35-44", "45-54", "55-64", "65+"),
                                ordered = TRUE),
-    age = suppressWarnings(as.numeric(age)),
-    # if age missing, use age bucket to impute age as midpoint of bucket
-    age = case_when(is.na(age) & age_bucket == "21-24" ~ mean(c(21,24)),
-                                 is.na(age) & age_bucket == "25-34" ~ mean(c(25,34)),
-                                 is.na(age) & age_bucket == "35-44" ~ mean(c(35,44)),
-                                 is.na(age) & age_bucket == "45-54" ~ mean(c(45,54)),
-                                 is.na(age) & age_bucket == "55-64" ~ mean(c(55,64)),
-                                 is.na(age) & age_bucket == "65+"   ~ 70,
-                                 TRUE ~ age),
+    age = suppressWarnings(as.numeric(age)), 
     age_gen = factor(age_gen,
                      levels = c("Boomers+ [< 1965]", "Gen X [1965-1981]", 
                                         "Millennials [1982-1995]", "Gen Z [> 1995]")),
@@ -268,54 +260,31 @@ cleaned <- cleaned %>%
                             lshock_paid_dk, lshock_paid_other),
                             ~ as.integer(!is.na(.x)))) %>%
        # lower case free test responses for easier searching
-       mutate(lshock_paid_other_text = tolower(lshock_paid_other_text)) %>%
-       # reassign free text reponses where possible using string searching. intentionally not using an LLM for reproducibility and transparency
-       mutate(
-              lshock_paid_csacct = if_else(
-    lshock_paid_other == 1 &
-      str_detect(lshock_paid_other_text,
-        "\\bcash\\b|insurance|\\bhsa\\b|tax|inheritance|christmas money|dedicated account|salary||savings|checking|check|work bonus|deductible|out of pocket|debit|deposit"),
-    1L, lshock_paid_csacct, lshock_paid_csacct),
+       mutate(lshock_paid_other_text = tolower(lshock_paid_other_text))
 
-  lshock_paid_retacct = if_else(
-    lshock_paid_other == 1 &
-      str_detect(lshock_paid_other_text, "401k|\\bira\\b|retirement"),
-    1L, lshock_paid_retacct, lshock_paid_retacct),
 
-  lshock_paid_ccard_mm = if_else(
-              lshock_paid_other == 1 &
-              str_detect(lshock_paid_other_text,
-                     "credit card|credit line"),
-              1, lshock_paid_ccard_mm, lshock_paid_ccard_mm),
+# reassign free text reponses where possible using string searching. intentionally not using an LLM for reproducibility and transparency
+payment_patterns <- list(
+  lshock_paid_csacct  = "\\bcash\\b|insurance|\\bhsa\\b|tax|inheritance|christmas money|dedicated account|salary|savings|checking|check|work bonus|deductible|out of pocket|debit|deposit",
+  lshock_paid_retacct = "401k|\\bira\\b|retirement",
+  lshock_paid_ccard_mm = "credit card|credit line",
+  lshock_paid_ffloan  = "son|church|go.?fund.?me",
+  lshock_paid_heloc   = "refinanc",
+  lshock_paid_incinc  = "bonus|recycl|whored",
+  lshock_paid_solbel  = "stock|sell|sold|salvage|cashed"
+)
 
-              lshock_paid_ffloan = if_else(
-              lshock_paid_other == 1 &
-              str_detect(lshock_paid_other_text, "son|church|go.?fund.?me"),
-              1L, lshock_paid_ffloan, lshock_paid_ffloan),
-
-              lshock_paid_bloan = if_else(
-              lshock_paid_other == 1 &
-              str_detect(lshock_paid_other_text,
-                     "loan|interest|financed|financing") &
-              !str_detect(lshock_paid_other_text,
-                     "401k|retirement|\\bira\\b|care credit|payment plan|affirm|medical credit"),
-              1L, lshock_paid_bloan, lshock_paid_bloan),
-
-              lshock_paid_heloc = if_else(
-              lshock_paid_other == 1 &
-              str_detect(lshock_paid_other_text, "refinanc"),
-              1L, lshock_paid_heloc, lshock_paid_heloc),
-
-              lshock_paid_incinc = if_else(
-              lshock_paid_other == 1 &
-              str_detect(lshock_paid_other_text, "bonus|recycl|whored"),
-              1L, lshock_paid_incinc, lshock_paid_incinc),
-
-              lshock_paid_solbel = if_else(
-              lshock_paid_other == 1 &
-              str_detect(lshock_paid_other_text,
-                     "stock|sell|sold|salvage|cashed"),
-              1L, lshock_paid_solbel, lshock_paid_solbel)) %>%
+cleaned <- cleaned %>%
+  mutate(across(names(payment_patterns), ~ {
+    if_else(lshock_paid_other == 1 &
+              str_detect(lshock_paid_other_text, payment_patterns[[cur_column()]]),
+            1L, .x, .x)
+  })) %>%
+  # need to exclude specific terms from the bank loan column
+       mutate(lshock_paid_bloan = if_else(lshock_paid_other == 1 & 
+                                   str_detect(lshock_paid_other_text, "loan|interest|financed|financing") &
+                                   !str_detect(lshock_paid_other_text, "401k|retirement|\\bira\\b|care credit|payment plan|affirm|medical credit"),
+                                           1L, lshock_paid_bloan, lshock_paid_bloan)) %>% 
        # drop cleaned free text variable
        select(-c(lshock_paid_other_text)) %>%
        # remove other flag for recategorised values in lshock_paid_other
@@ -524,3 +493,6 @@ cleaned <- cleaned %>%
                                           TRUE ~  as.numeric(shock_forecast))) %>%
        # relocate variable to be after shock predictability variable
        relocate(shock_forecast, .after = no_adverse_outcome_oct25)
+
+# Export data ------------------------------------------------------------
+write_csv(cleaned, "data/clean/surveyData.csv")
