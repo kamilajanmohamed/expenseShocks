@@ -317,6 +317,22 @@ cleaned <- impute_bin(cleaned, "income_bin", "lshock_hh_inc", 25000, "lshock_hh_
        # rearrange expense shock variables
        relocate(c("lshock_hh_inc", "lshock_hh_inc_imputed"), .after = "lshock_paid_other")
 
+# create variable lshock_hh_inc_bin categorising the self-reported income into bins corresponding to the income bins in the numerator-provided income variable. Then create a dummy lshock_hh_inc_conflict equal to 1 if lshock_hh_inc_bin \neq income.
+
+cleaned <- cleaned %>%
+       mutate(lshock_hh_inc_bin = factor(case_when(lshock_hh_inc < 20000 ~ "- $20k",
+                                          lshock_hh_inc %in% c(20000:40000) ~ "$20k-40k",
+                                          lshock_hh_inc >40000 & lshock_hh_inc <= 60000 ~ "$40k-60k",
+                                          lshock_hh_inc >60000 & lshock_hh_inc <= 80000 ~ "$60k-80k",
+                                          lshock_hh_inc > 80000 & lshock_hh_inc <= 100000 ~ "$80k-100k",
+                                          lshock_hh_inc >100000 & lshock_hh_inc <= 125000 ~ "$100k-125k",
+                                          lshock_hh_inc > 125000 ~ "$125k +",
+                                          TRUE ~ NA), 
+                                          levels = c("- $20k",     "$20k-40k",   "$40k-60k",   "$60k-80k",   "$80k-100k", "$100k-125k", "$125k +"), ordered = TRUE),
+              lshock_hh_inc_conflict = ifelse(income != lshock_hh_inc_bin, 1, 0)) %>%
+       relocate(c("lshock_hh_inc_bin", "lshock_hh_inc_conflict"), .after = "lshock_hh_inc_imputed")
+
+
 #### Timing of shock -------------------------------------------------------------
 cleaned <- cleaned %>%
         #rename variables for conciseness
