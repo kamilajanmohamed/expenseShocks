@@ -1,0 +1,14 @@
+cleaned <- cleaned %>%
+  #rename variables for conciseness
+  rename(expense_bin = `About how much money was the total cost for this large and unexpected expense?  Please estimate the full amount of this expense even if you did not pay all of it at once or if you are paying over time.`,
+         expense_value_under_20k = `You previously stated [question('value'), id='6']. Specifically, what was the approximate total cost for this large and unexpected expense?`,
+         expense_value_over_20k = `You previously stated $20,000 or more. Specifically, what was the approximate total cost for this large and unexpected expense?`) %>%
+       # coalesce the reported expense values into one column 
+       mutate(lshock_size = coalesce(expense_value_under_20k, expense_value_over_20k)) %>%
+       # drop individual expense vars     
+       select(-c(expense_value_under_20k, expense_value_over_20k))
+
+# clean expenses using bin function
+cleaned <- impute_bin(cleaned, "expense_bin", "lshock_size", 20000, "lshock_size", "lshock_size_imputed") %>%
+       # rearrange expense shock variables
+       relocate(c("lshock_size", "lshock_size_imputed"), .after = "lshock_type")

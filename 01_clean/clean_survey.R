@@ -304,34 +304,37 @@ cleaned <- cleaned %>%
 #### HH income at time of shock -------------------------------------------------------------
 cleaned <- cleaned %>%
        # rename variables for conciseness
-       rename(income_bin = `At the time you had this large and unexpected expense, what was your household’s monthly take-home income (your household's monthly income after taxes). Please include all sources of income such as income from jobs, any social security or government payments, and any retirement income.`,
-              income_value_under_25k = `You previously stated [question('value'), id='11']. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) at the time you had this large and unexpected expense?`,
-              income_over_25k = `You previously stated $25,000 or more. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) at the time you had this large and unexpected expense?`) %>%
+       rename(lshock_hh_inc_bin = `At the time you had this large and unexpected expense, what was your household’s monthly take-home income (your household's monthly income after taxes). Please include all sources of income such as income from jobs, any social security or government payments, and any retirement income.`,
+              under_25k = `You previously stated [question('value'), id='11']. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) at the time you had this large and unexpected expense?`,
+              over_25k = `You previously stated $25,000 or more. Specifically, about how much was your household's monthly take-home income (your household's monthly income after taxes) at the time you had this large and unexpected expense?`) %>%
        # coalesce the reported income values into one column
-       mutate(lshock_hh_inc = coalesce(income_value_under_25k, income_over_25k)) %>%
+       mutate(lshock_hh_inc = coalesce(under_25k, over_25k)) %>%
        # drop individual income vars
-       select(-c(income_value_under_25k, income_over_25k))
+       select(-c(under_25k, over_25k))
 
 # clean income using bin function
-cleaned <- impute_bin(cleaned, "income_bin", "lshock_hh_inc", 25000, "lshock_hh_inc", "lshock_hh_inc_imputed") %>%
+cleaned <- impute_bin(cleaned, "lshock_hh_inc_bin", "lshock_hh_inc", 25000, "lshock_hh_inc", "lshock_hh_inc_imputed") %>%
        # rearrange expense shock variables
        relocate(c("lshock_hh_inc", "lshock_hh_inc_imputed"), .after = "lshock_paid_other")
 
-# create variable lshock_hh_inc_bin categorising the self-reported income into bins corresponding to the income bins in the numerator-provided income variable. Then create a dummy lshock_hh_inc_conflict equal to 1 if lshock_hh_inc_bin \neq income.
+# create variable lshock_hh_inc_bin_annual categorising the self-reported income into bins corresponding to the income bins in the numerator-provided income variable. Since the survey collects monthly income, multiply by 12 before binning. Then create a dummy lshock_hh_inc_conflict equal to 1 if lshock_hh_inc_bin_annual \neq income.
 
 cleaned <- cleaned %>%
-       mutate(lshock_hh_inc_bin = factor(case_when(lshock_hh_inc < 20000 ~ "- $20k",
-                                          lshock_hh_inc %in% c(20000:40000) ~ "$20k-40k",
-                                          lshock_hh_inc >40000 & lshock_hh_inc <= 60000 ~ "$40k-60k",
-                                          lshock_hh_inc >60000 & lshock_hh_inc <= 80000 ~ "$60k-80k",
-                                          lshock_hh_inc > 80000 & lshock_hh_inc <= 100000 ~ "$80k-100k",
-                                          lshock_hh_inc >100000 & lshock_hh_inc <= 125000 ~ "$100k-125k",
-                                          lshock_hh_inc > 125000 ~ "$125k +",
+       mutate(lshock_hh_inc_annual = lshock_hh_inc*12) %>%
+       mutate(lshock_hh_inc_bin_annual = factor(case_when(lshock_hh_inc_annual < 20000 ~ "- $20k",
+                                          lshock_hh_inc_annual >= 20000 & lshock_hh_inc_annual <= 40000 ~ "$20k-40k",
+                                          lshock_hh_inc_annual >40000 & lshock_hh_inc_annual <= 60000 ~ "$40k-60k",
+                                          lshock_hh_inc_annual >60000 & lshock_hh_inc_annual <= 80000 ~ "$60k-80k",
+                                          lshock_hh_inc_annual > 80000 & lshock_hh_inc_annual <= 100000 ~ "$80k-100k",
+                                          lshock_hh_inc_annual >100000 & lshock_hh_inc_annual <= 125000 ~ "$100k-125k",
+                                          lshock_hh_inc_annual > 125000 ~ "$125k +",
                                           TRUE ~ NA), 
                                           levels = c("- $20k",     "$20k-40k",   "$40k-60k",   "$60k-80k",   "$80k-100k", "$100k-125k", "$125k +"), ordered = TRUE),
-              lshock_hh_inc_conflict = ifelse(income != lshock_hh_inc_bin, 1, 0)) %>%
-       relocate(c("lshock_hh_inc_bin", "lshock_hh_inc_conflict"), .after = "lshock_hh_inc_imputed")
-
+              lshock_hh_inc_conflict = case_when(income > lshock_hh_inc_bin_annual ~ "Underreported monthly",
+                                                  income < lshock_hh_inc_bin_annual ~ "Overreported monthly",
+                                                 income == lshock_hh_inc_bin_annual ~ "No conflict",
+                                                 TRUE ~ NA)) %>%
+       relocate(c("lshock_hh_inc_annual", "lshock_hh_inc_bin_annual", "lshock_hh_inc_conflict"), .after = "lshock_hh_inc_imputed")
 
 #### Timing of shock -------------------------------------------------------------
 cleaned <- cleaned %>%
