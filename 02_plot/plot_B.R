@@ -10,6 +10,7 @@ source("00_setup/config.R")
 # Load packages ------------------------------------------------------------
 library(tidyverse)
 library(pals)
+library(patchwork)
 
 # Load data ------------------------------------------------------------
 df <- read_csv("data/clean/surveyData.csv")
@@ -39,7 +40,7 @@ shock_levels <- df %>%
   as.character()
 
 # B2. Shock Type Distribution------------------------------------------------------------
-df %>%
+ex_b2 <- df %>%
   count(lshock_type) %>%
   na.omit() %>%
   mutate(
@@ -54,15 +55,21 @@ mutate(
   ggplot(aes(x = 0.5, y = n, fill = lshock_type)) +
   geom_col(width = 1, color = "white", linewidth = 0.5) +
   coord_polar(theta = "y") +
-  geom_text(aes(x = 0.85, y = ypos, label = label), size = 3.5, color = "white", fontface = "bold") +
-  xlim(0, 1.5) +
+  geom_text(aes(x = 0.85, y = ypos, label = label), size = 5, color = "white", fontface = "bold") +
+  xlim(0, 1) +
   scale_fill_manual(values=rev(unname(tol()[1:9]))) + 
   #scale_fill_brewer(palette = "Blues", direction = -1) +
+  ggtitle("Distribution of Shock Types") + 
   guides(fill = guide_legend(reverse = TRUE, title = "Shock Type")) +
-  theme_void()
+  theme_void() + 
+  theme(aspect.ratio = 1)
+
+# export figure
+ggsave("output/figures/ex_b2.pdf", ex_b2, width = 9, height = 6, units = "in")
 
 # B2.1 Shock Type Distribution by Income ------------------------------------------------------------
-df %>%
+# Build plot WITHOUT legend
+ex_b2.1 <- df %>%
   filter(!is.na(income), !is.na(lshock_type)) %>%
   mutate(income = factor(income, levels = c(
     "- $20k", "$20k-40k", "$40k-60k", "$60k-80k", "$80k-100k", "$100k-125k", "$125k +"
@@ -81,16 +88,29 @@ df %>%
   geom_col(width = 1, color = "white", linewidth = 0.5) +
   coord_polar(theta = "y") +
   geom_text(aes(x = 0.85, y = ypos, label = label), size = 3.5, color = "white", fontface = "bold") +
-  xlim(0, 1.5) +
+  xlim(0, 1) +
   scale_fill_manual(values = rev(unname(tol()[1:9]))) +
   guides(fill = guide_legend(reverse = TRUE, title = "Shock Type")) +
-  facet_wrap(~ income, nrow = 4) +
+  ggtitle("Distribution of Shock Types by Income") + 
+  facet_wrap(~ income, nrow = 3) +
   theme_void() +
-  theme(strip.text = element_text(size = 10, margin = margin(b = 0)),
-        panel.spacing = unit(0, "pt"))
+  theme(
+    strip.text      = element_text(size = 10, margin = margin(b = 0, t = 2)),
+    panel.spacing   = unit(-8, "pt"),   # pull panels together
+    plot.margin     =  margin(10,10, 5,10),
+    aspect.ratio    = 1,
+    legend.position  = c(0.83, 0.18),
+    legend.title    = element_text(size = 9, face = "bold"),
+    legend.text     = element_text(size = 8),
+    legend.key.size = unit(0.35, "cm"),
+    legend.margin   = margin(t = -5)    # pull legend up toward pies
+  )
+
+# export figure
+ggsave("output/figures/ex_b2.1.pdf", ex_b2.1, width = 10, height = 11, units = "in")
 
 # B2.2 Shock type distribution by cash buffer ------------------------------------------------------------
-df %>%
+ex_b2.2 <- df %>%
   filter(!is.na(hh_liquidity), !is.na(lshock_type)) %>%
   mutate(hh_liquidity = factor(hh_liquidity, levels = c("$0 - $100", 
 "$100 - $500", "$500 - $1,000", "$1,000 - $2,500" ,  "$2,500 - $5,000" , "$5,000 - $7,500", "$7,500 - $10,000", "$10,000 - $20,000", "$20,000 - $50,000",  "More than $50,000"
@@ -109,10 +129,23 @@ df %>%
   geom_col(width = 1, color = "white", linewidth = 0.5) +
   coord_polar(theta = "y") +
   geom_text(aes(x = 0.85, y = ypos, label = label), size = 3.5, color = "white", fontface = "bold") +
-  xlim(0, 1.5) +
+  xlim(0, 1) +
   scale_fill_manual(values = rev(unname(tol()[1:9]))) +
   guides(fill = guide_legend(reverse = TRUE, title = "Shock Type")) +
+  ggtitle("Shock Distribution by Liquidity Buffer") + 
   facet_wrap(~ hh_liquidity, nrow = 4) +
   theme_void() +
-  theme(strip.text = element_text(size = 10, margin = margin(b = 0)),
-        panel.spacing = unit(0, "pt"))
+  theme(
+    strip.text      = element_text(size = 10, margin = margin(b = 0, t = 2)),
+    panel.spacing   = unit(-8, "pt"),   # pull panels together
+    plot.margin     = margin(10,10, 5,10),
+    aspect.ratio    = 1,
+    legend.position  = c(0.83, 0.18),
+    legend.title    = element_text(size = 9, face = "bold"),
+    legend.text     = element_text(size = 8),
+    legend.key.size = unit(0.35, "cm"),
+    legend.margin   = margin(t = -5)    # pull legend up toward pies
+  )
+
+ggsave("output/figures/ex_b2.2.pdf", ex_b2.2, width = 9, height = 12, units = "in")
+
