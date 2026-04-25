@@ -1,14 +1,96 @@
-cleaned <- cleaned %>%
+#############################################################
+# Author: Kamila Janmohamed
+# Date: 2026-04-24
+# Description: Explore imputations for expense shocks 
+#############################################################
+
+# Set WD ------------------------------------------------------------
+source("00_setup/config.R")
+
+# Load packages ------------------------------------------------------------
+library(tidyverse)
+
+# Call functions ------------------------------------------------------------
+source("code/01_clean/_fun.R")
+
+# Load packages ------------------------------------------------------------
+library(tidyverse)
+library(readxl)
+
+# Load data ------------------------------------------------------------
+df <- read_excel("data/raw/Expense Shock Final Results.xlsx")
+
+# subset variables ------------------------------------------------------------
+
+df2 <- df %>%
   #rename variables for conciseness
-  rename(expense_bin = `About how much money was the total cost for this large and unexpected expense?  Please estimate the full amount of this expense even if you did not pay all of it at once or if you are paying over time.`,
-         expense_value_under_20k = `You previously stated [question('value'), id='6']. Specifically, what was the approximate total cost for this large and unexpected expense?`,
-         expense_value_over_20k = `You previously stated $20,000 or more. Specifically, what was the approximate total cost for this large and unexpected expense?`) %>%
+  rename(   any_shock= `Since the beginning of 2025, did your household have a large and unexpected expense?`,
+    n_shock = `How many times since the beginning of 2025 did your household have a large and unexpected expense?`,
+    expense_bin = `About how much money was the total cost for this large and unexpected expense?  Please estimate the full amount of this expense even if you did not pay all of it at once or if you are paying over time.`,
+         under_20k = `You previously stated [question('value'), id='6']. Specifically, what was the approximate total cost for this large and unexpected expense?`,
+         over_20k = `You previously stated $20,000 or more. Specifically, what was the approximate total cost for this large and unexpected expense?`) %>%
        # coalesce the reported expense values into one column 
-       mutate(lshock_size = coalesce(expense_value_under_20k, expense_value_over_20k)) %>%
-       # drop individual expense vars     
-       select(-c(expense_value_under_20k, expense_value_over_20k))
+       mutate(lshock_size = coalesce(under_20k, over_20k),
+              # clean expense bin factors
+              expense_bin = factor(expense_bin, levels = c("$0-$50", "$50-$100", "$100-$200", "$300-$500", "$500-$700", "$700-$1,000" ,"$1,000-$1,500",  "$1,500-$2,000", "$2,000-$3,000", "$3,000-$5,000", "$5,000-$10,000", "$10,000-$20,000", "More than $20,000"), ordered = TRUE), 
+               any_shock= case_when(any_shock == "Yes" ~ 1,
+                                any_shock== "No" ~ 0,
+                                  TRUE ~ NA),
+    n_shock = factor(n_shock, 
+                                 levels = c("1 time", "2 times", "3 times" , 
+                                            "4 times", "5 to 10 times" , 
+                                            "More than 10 times"), 
+                                 ordered = TRUE)) %>%
+       select(expense_bin, lshock_size, any_shock, n_shock) 
 
 # clean expenses using bin function
-cleaned <- impute_bin(cleaned, "expense_bin", "lshock_size", 20000, "lshock_size", "lshock_size_imputed") %>%
-       # rearrange expense shock variables
-       relocate(c("lshock_size", "lshock_size_imputed"), .after = "lshock_type")
+cleaned <- impute_bin(df2, "expense_bin", "lshock_size", 20000, "lshock_size_cleaned", "lshock_size_imputed") %>%
+              bind_cols(expense_bin = df2$expense_bin) %>%
+               # re-derive bin bounds (mirrors impute_bin logic) for diagnosis
+              mutate(lower_bound = case_when(
+                     str_detect(expense_bin, "-") ~
+                            as.numeric(gsub("[^0-9]", "", sub("-.*", "", expense_bin))),
+                     str_detect(expense_bin, "More than| \\+") ~ 20000,
+                     TRUE ~ NA_real_),
+              upper_bound = case_when(
+                     str_detect(expense_bin, "-") ~
+                            as.numeric(gsub("[^0-9]", "", sub(".*-", "", expense_bin))),
+                     str_detect(expense_bin, "More than") ~ 20000,
+                     TRUE ~ NA_real_)
+              ) %>%
+       #identify imputation types: real value below lower bound, real value above upper bound
+       mutate(error_type = case_when(is.na(expense_bin) ~ NA,
+                                          lshock_size_imputed == 1 & lshock_size < lower_bound ~ "free text smaller",
+                                          lshock_size_imputed == 1 & lshock_size > upper_bound  ~ "free text bigger",
+                                          lshock_size_imputed == 0 ~ "No error",
+                                          TRUE ~ NA))
+
+#### CHECK: does anyone who picked a bin fail to report a free text value ####
+cleaned %>%
+filter(!is.na(expense_bin) & is.na(lshock_size))
+# Nope. 
+
+#### CHECK: Number of imputations ####
+table(cleaned$lshock_size_imputed)
+# 5.7% of shocks are imputed (255/4576)
+
+#### CHECK: Are errors overrepresented anywhere? ####
+cleaned %>%
+group_by(expense_bin, lshock_size_imputed) %>%
+summarise(count = n()) %>%
+mutate(pct = count / sum(count)) %>% 
+filter(lshock_size_imputed == 1) 
+# imputations seem overrepresented among smaller shocks
+
+#### CHECK: Error types by bin ####
+cleaned %>%
+group_by(expense_bin, error_type) %>%
+summarise(count = n()) %>%
+mutate(pct = count / sum(count))  %>%
+filter(error_type != "No error")
+# more of these errors are because the free text is bigger than the upper bound
+
+#### CHECK: How do free text responses really compare? ####
+cleaned %>%
+filter(error_type == "free text bigger") %>% View()
+# it really does not look like people are systematically making errors e.g. tacking on an extra zero/using 9s instead of 0s in the free text. 

@@ -29,10 +29,10 @@ impute_bin  <- function(dataframe, bin_var, value_var, threshold, out_col, imput
             missing_value = if_else(is.na(dataframe[[value_var]]) & !is.na(dataframe[[bin_var]]), 1, 0),
             # impute value with bin midpoint if error or missing, otherwise keep original value
             "{out_col}"     := case_when(reporting_error == 1 | missing_value == 1 ~ midpoint, TRUE ~ .data[[value_var]]),
-            # create imputed indicator variable where 1 indicates imputed value and 0 indicates original value
-            "{imputed_col}" := case_when(reporting_error == 1 ~ 1, reporting_error != 1 & missing_value != 1 ~ 0, TRUE ~ NA)          
+            # create imputed indicator variable: NA = no bin reported, 1 = imputed, 0 = original value
+            "{imputed_col}" := case_when(is.na(dataframe[[bin_var]]) ~ NA, reporting_error == 1 | missing_value == 1 ~ 1, TRUE ~ 0)
         ) %>%
-        select(-c(bin_var, lower_bound, upper_bound, midpoint, reporting_error, missing_value))
+        select(-c(all_of(bin_var), lower_bound, upper_bound, midpoint, reporting_error, missing_value))
 }
 
 # Process advrerse outcomes ------------------------------------------------------------
