@@ -333,7 +333,7 @@ cleaned <- cleaned %>%
               lshock_hh_inc_conflict = factor( case_when(income > lshock_hh_inc_bin_annual ~ "Underreported monthly",
                                                   income < lshock_hh_inc_bin_annual ~ "Overreported monthly",
                                                  income == lshock_hh_inc_bin_annual ~ "No conflict",
-                                                 TRUE ~ NA)), levels=s c("Underreported monthly", "Overreported monthly", "No conflict")) %>%
+                                                 TRUE ~ NA), levels = c("Underreported monthly", "Overreported monthly", "No conflict"))) %>%
        relocate(c("lshock_hh_inc_annual", "lshock_hh_inc_bin_annual", "lshock_hh_inc_conflict"), .after = "lshock_hh_inc_imputed")
 
 #### Timing of shock -------------------------------------------------------------
