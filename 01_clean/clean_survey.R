@@ -6,7 +6,7 @@
 
 # Set WD ------------------------------------------------------------
 #run once per session - this will be the root directory for all file paths in this project
-source("00_setup/config.R")
+#source("00_setup/config.R")
 
 # Call functions ------------------------------------------------------------
 source("code/01_clean/_fun.R")
@@ -390,8 +390,8 @@ cleaned <- cleaned %>%
                                                                       "I thought it was unlikely to happen (about 25% chance)" ,
                                                                       "I thought it was equally likely and unlikely to happen (about 50% chance)",
                                                                       "I thought it was likely to happen (about 75% chance)",
-                                                                      "I thought it would definitely happen (about 100% chance)"),
-                                                         labels = c("Impossible (0% chance)", "Unlikely (25% chance)", "Equally likely and unlikely(50% chance)", "Likely (75% chance)", "Definitely (100% chance)"))) %>%
+                                                                      "I was certain it would happen (about 100% chance)"),
+                                                         labels = c("Impossible (0% chance)", "Unlikely (25% chance)", "Equally likely and unlikely (50% chance)", "Likely (75% chance)", "Definitely (100% chance)"))) %>%
        # clean prevention as dummy
        mutate(lshock_prev = case_when(lshock_prev == "Yes, we could have prevented it or reduced the cost of the expense (for example, with preventive care, maintenance, or insurance)" ~ 1,
                                           lshock_prev == "No, there was nothing we could have done to prevent it or reduce the cost" ~ 0,
@@ -504,14 +504,21 @@ cleaned <- process_adverse_outcomes(cleaned, "_oct25") %>%
                                                  .after = hh_credit_score_oct25)
 
 #### Clean  shock forecasting -------------------------------------------------------------
+forecast_breaks <- c(-Inf, 0.125, 0.375, 0.625, 0.875, Inf)
+forecast_labels <- c("Extremely unlikely [0%-12.5%)", "Unlikely [12.5%-37.5%)", "Equally likely and unlikely [37.5%-62.5%)", "Likely [62.5%-87.5%)", "Extremely likely [87.5%-100%)")
+
 cleaned <- cleaned %>%
        # rename variables for conciseness
        rename(shock_forecast = `Looking forward to the next 12 months, what are the chances your household will experience a large and unexpected expense?`) %>%
-       # clean var
+       # clean var into numeric
        mutate(shock_forecast = case_when(str_detect(shock_forecast, "%") ~ (as.numeric(gsub("[^0-9]", "", sub("%.*", "", shock_forecast))))/100,
                                           TRUE ~  as.numeric(shock_forecast))) %>%
+       # convert the numeric variable into bins for comparability with lshoc_prev
+       mutate(shock_forecast_bin = cut(shock_forecast, breaks = forecast_breaks,
+                       labels = forecast_labels, right = TRUE))
        # relocate variable to be after shock predictability variable
-       relocate(shock_forecast, .after = no_adverse_outcome_oct25)
+       relocate(c("shock_forecast", "shock_forecast_bin"), .after = no_adverse_outcome_oct25)
 
 # Export data ------------------------------------------------------------
 write_csv(cleaned, "data/clean/surveyData.csv")
+
