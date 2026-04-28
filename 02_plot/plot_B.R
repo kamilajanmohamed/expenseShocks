@@ -12,7 +12,7 @@ library(tidyverse)
 library(kableExtra)
 
 # Load data ------------------------------------------------------------
-df <- read_csv("data/clean/surveyData.csv")
+df <- read_csv("data/merged/merged_survey.csv")
 
 # Prep data ------------------------------------------------------------
 # identify all cats that account for less than 3% of shocks and recategories into other
@@ -231,7 +231,7 @@ ex_b2.2_quartile <- df %>%
 ggsave("output/figures/ex_b2.2_quartile.pdf", ex_b2.2_quartile, width = 9, height = 9, units = "in")
 
 
-# Exhibit 2.2b table: Shock type distribution by liquidity buffer at time of shock ------------------------------------------------------------
+# B2.2b table: Shock type distribution by liquidity buffer at time of shock ------------------------------------------------------------
 tab_b2.2 <- df %>%
   filter(!is.na(hh_liquidity), !is.na(lshock_type)) %>%
   mutate(
@@ -262,3 +262,32 @@ kable(tab_b2.2,
       label     = "tab:shock_by_liquidity") %>%
   kable_styling(latex_options = c("hold_position")) %>%
   cat(file = "output/tables/tab_b2.2_shock_by_liquidity.tex")
+
+# B2.3 Shock type distribution by Home value at time of shock ------------------------------------------------------------
+  # check correlations between current and lagged home values
+  cor(na.omit(df$home_value_lshock_month), na.omit(df$home_value_lag_lshock_month))
+# Approx 1. let's just use the contemporaneous home value
+
+tab_b2.3 <- df %>%
+  filter(!is.na(home_value_lshock_month), !is.na(lshock_type)) %>%
+  mutate(home_value_q = ntile(as.integer(home_value_lshock_month), 4),
+    home_value_q = factor(home_value_q,
+                         levels = 1:4,
+                         labels = c("Q1 (Lowest)", "Q2", "Q3", "Q4 (Highest)"))) %>%
+  group_by(home_value_q) %>%
+  count(lshock_type) %>%
+  mutate(pct = n / sum(n)) %>%
+  mutate(lshock_type = factor(lshock_type, levels = shock_levels)) %>%
+  select(home_value_q, lshock_type, pct) %>%
+  mutate(pct = scales::percent(pct, accuracy = 1)) %>%
+  pivot_wider(names_from = home_value_q, values_from = pct, values_fill = "0%") %>%
+  arrange(desc(lshock_type))
+
+  kable(tab_b2.3,
+      format    = "latex",
+      booktabs  = TRUE,
+      col.names = c("Shock Type", "Q1 (Lowest)", "Q2", "Q3", "Q4 (Highest)"),
+      caption   = "Shock Type Distribution by Avg Zipcode Home Value Quartile",
+      label     = "tab:shock_by_home_value") %>%
+  kable_styling(latex_options = c("hold_position")) %>%
+  cat(file = "output/tables/tab_b2.3_shock_by_home_value.tex")
