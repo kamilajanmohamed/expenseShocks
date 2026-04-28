@@ -6,7 +6,7 @@
 
 # Set WD ------------------------------------------------------------
 #run once per session - this will be the root directory for all file paths in this project
-source(file.path(dirname(normalizePath(sys.frame(1)$ofile)), "../00_setup/config.R"))
+source("00_setup/config.R")
 
 # Call functions ------------------------------------------------------------
 source("code/01_clean/_fun.R")
@@ -391,7 +391,7 @@ cleaned <- cleaned %>%
                                                                       "I thought it was equally likely and unlikely to happen (about 50% chance)",
                                                                       "I thought it was likely to happen (about 75% chance)",
                                                                       "I was certain it would happen (about 100% chance)"),
-                                                         labels = c("Impossible (0% chance)", "Unlikely (25% chance)", "Equally likely and unlikely (50% chance)", "Likely (75% chance)", "Definitely (100% chance)"))) %>%
+                                                         labels = c("Impossible (0% chance)", "Unlikely (25% chance)", "Equally likely and unlikely (50% chance)", "Likely (75% chance)", "Definitely (100% chance)"), ordered = TRUE)) %>%
        # clean prevention as dummy
        mutate(lshock_prev = case_when(lshock_prev == "Yes, we could have prevented it or reduced the cost of the expense (for example, with preventive care, maintenance, or insurance)" ~ 1,
                                           lshock_prev == "No, there was nothing we could have done to prevent it or reduce the cost" ~ 0,
@@ -518,7 +518,6 @@ cleaned <- cleaned %>%
                        labels = forecast_labels, right = TRUE), levels = forecast_labels, ordered = TRUE)) %>%
        # relocate variable to be after shock predictability variable
        relocate(c("shock_forecast", "shock_forecast_bin"), .after = no_adverse_outcome_oct25)
-
 # Export data ------------------------------------------------------------
-write_csv(cleaned, "data/clean/surveyData.csv")
+write_rds(cleaned, "data/clean/surveyData.rds")
 

@@ -16,8 +16,7 @@ zillow <- read_csv("data/raw/Zip_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv
     rename(postal_code = RegionName) %>%
     mutate(postal_code = as.numeric(postal_code))
 
-survey <- read_csv("data/clean/surveyData.csv")
-
+survey <- read_rds("data/clean/surveyData.rds")
 # Pivot zillow data to long ------------------------------------------------------------
 zillow_wide <- pivot_longer(zillow, 
                         cols = names(zillow)[-1],
@@ -25,7 +24,7 @@ zillow_wide <- pivot_longer(zillow,
     #keep dates in 2025 and 2026 to shorten df
     filter(str_detect(trunc_date, "2024|2025|2026")) %>%
     mutate(trunc_date = floor_date(as.Date(trunc_date), "month"))
-
+    
 # Merge home values onto survey data ------------------------------------------------------------
 merged_survey <- survey %>%
                 mutate(postal_code = as.numeric(as.character(postal_code))) %>%
@@ -62,5 +61,6 @@ cat("Missing home_value_lshock_month:", sum(is.na(merged_survey$home_value_lag_l
 # we have lagged month home values for everyone with a shock!
 
 # Export merged data ------------------------------------------------------------
-write_csv(merged_survey, "data/merged/merged_survey.csv")
+write_rds(merged_survey, "data/merged/merged_survey.rds")
+
 
