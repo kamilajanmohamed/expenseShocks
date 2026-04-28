@@ -6,7 +6,7 @@
 
 # Set WD ------------------------------------------------------------
 #run once per session - this will be the root directory for all file paths in this project
-#source("00_setup/config.R")
+source(file.path(dirname(normalizePath(sys.frame(1)$ofile)), "../00_setup/config.R"))
 
 # Call functions ------------------------------------------------------------
 source("code/01_clean/_fun.R")
@@ -505,7 +505,7 @@ cleaned <- process_adverse_outcomes(cleaned, "_oct25") %>%
 
 #### Clean  shock forecasting -------------------------------------------------------------
 forecast_breaks <- c(-Inf, 0.125, 0.375, 0.625, 0.875, Inf)
-forecast_labels <- c("Extremely unlikely [0%-12.5%)", "Unlikely [12.5%-37.5%)", "Equally likely and unlikely [37.5%-62.5%)", "Likely [62.5%-87.5%)", "Extremely likely [87.5%-100%)")
+forecast_labels <- c("Extremely unlikely [0%-12.5%)", "Unlikely [12.5%-37.5%)", "Equally likely and unlikely [37.5%-62.5%)", "Likely [62.5%-87.5%)", "Extremely likely [87.5%-100%]")
 
 cleaned <- cleaned %>%
        # rename variables for conciseness
@@ -514,8 +514,8 @@ cleaned <- cleaned %>%
        mutate(shock_forecast = case_when(str_detect(shock_forecast, "%") ~ (as.numeric(gsub("[^0-9]", "", sub("%.*", "", shock_forecast))))/100,
                                           TRUE ~  as.numeric(shock_forecast))) %>%
        # convert the numeric variable into bins for comparability with lshoc_prev
-       mutate(shock_forecast_bin = cut(shock_forecast, breaks = forecast_breaks,
-                       labels = forecast_labels, right = TRUE))
+       mutate(shock_forecast_bin = factor(cut(shock_forecast, breaks = forecast_breaks,
+                       labels = forecast_labels, right = TRUE), levels = forecast_labels, ordered = TRUE)) %>%
        # relocate variable to be after shock predictability variable
        relocate(c("shock_forecast", "shock_forecast_bin"), .after = no_adverse_outcome_oct25)
 

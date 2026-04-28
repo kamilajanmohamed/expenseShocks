@@ -12,36 +12,16 @@ source("00_setup/config.R")
 
 # Load packages ------------------------------------------------------------
 library(tidyverse)
-library(gt)
+library(kableExtra)
 
 # Load data ------------------------------------------------------------
 df <- read_csv("data/merged/merged_survey.csv")
 
 # Table E1: Comparison of future belief vs. prob of expense risk ------------------------------------------------------------
-lshock_levels <- c(
-  "Impossible (0% chance)",
-  "Unlikely (25% chance)",
-  "Equally likely and unlikely (50% chance)",
-  "Likely (75% chance)",
-  "Definitely (100% chance)"
-)
+table(df$lshock_pred, df$shock_forecast_bin)
 
-forecast_breaks <- c(-Inf, 0.125, 0.375, 0.625, 0.875, Inf)
-forecast_labels <- c("0%", "25%", "50%", "75%", "100%")
-
-df_cross <- df %>%
-  filter(!is.na(lshock_pred), !is.na(shock_forecast)) %>%
-  mutate(
-    lshock_pred  = factor(lshock_pred, levels = lshock_levels),
-    forecast_bin = cut(shock_forecast, breaks = forecast_breaks,
-                       labels = forecast_labels, right = TRUE)
-  )
-
-row_ns <- df_cross %>%
-  count(lshock_pred, name = "N")
-
-cross_tab <- df_cross %>%
-  count(lshock_pred, forecast_bin) %>%
+cross_tab <- df %>%
+  count(lshock_pred, shock_forecast_bin) %>%
   group_by(lshock_pred) %>%
   mutate(pct = n / sum(n) * 100) %>%
   ungroup() %>%
@@ -64,3 +44,5 @@ cross_tab %>%
   ) %>%
   tab_footnote("Forecast bins: 0% = [0, 12.5%), 25% = [12.5%, 37.5%), 50% = [37.5%, 62.5%), 75% = [62.5%, 87.5%), 100% = [87.5%, 100%]") %>%
   gtsave("03_output/figures/E1_forecast_vs_pred.html")
+
+table(df$lshock_pred)

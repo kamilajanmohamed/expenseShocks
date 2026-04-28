@@ -63,3 +63,4 @@ cat("Missing home_value_lshock_month:", sum(is.na(merged_survey$home_value_lag_l
 
 # Export merged data ------------------------------------------------------------
 write_csv(merged_survey, "data/merged/merged_survey.csv")
+
