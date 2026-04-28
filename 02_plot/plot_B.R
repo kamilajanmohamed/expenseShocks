@@ -1,7 +1,7 @@
 #############################################################
 # Author: Kamila Janmohamed
 # Date: 2026-04-23
-# Description: Plot exhibit set E
+# Description: Plot exhibit set B
 #############################################################
 
 # Set WD ------------------------------------------------------------
@@ -63,78 +63,6 @@ ex_b2 <- df %>%
 # export figure
 ggsave("output/figures/ex_b2.pdf", ex_b2, width = 7, height = 5, units = "in")
 
-# B2.1_bins Shock Type Distribution by Income Bins ------------------------------------------------------------
-ex_b2.1_bins <- df %>%
-  filter(!is.na(income), !is.na(lshock_type)) %>%
-  mutate(income = factor(income, levels = c(
-    "- $20k", "$20k-40k", "$40k-60k", "$60k-80k", "$80k-100k", "$100k-125k", "$125k +"
-  ))) %>%
-  group_by(income) %>%
-  count(lshock_type) %>%
-  mutate(pct = n / sum(n)) %>%
-  mutate(lshock_type = fct_reorder(lshock_type, n)) %>%
-  mutate(lshock_type = fct_relevel(lshock_type, "Other", after = 0)) %>%
-  mutate(label = scales::percent(pct, accuracy = 1)) %>%
-  ggplot(aes(x = pct, y = lshock_type, fill = lshock_type)) +
-  geom_col(fill = "steelblue") +
-  geom_text(aes(label = label), hjust = -0.1, color = "black") +
-  scale_x_continuous(labels = scales::percent, expand = expansion(mult = c(0, 0.12))) +
-  guides(fill = guide_legend(reverse = TRUE, title = "Shock Type")) +
-  ggtitle("Distribution of Shock Types by Income") +
-    xlab("Share of Reported Shocks") + 
-  ylab("Type of Shock") + 
-  facet_wrap(~ income, nrow = 3) +
-  theme_minimal() +
-  theme(
-    strip.text      = element_text(size = 10, margin = margin(b = 2, t = 2)),
-    panel.spacing   = unit(8, "pt"),
-    plot.margin     = margin(10, 10, 5, 10),
-    axis.title      = element_blank(),
-    legend.position = "right",
-    legend.title    = element_text(size = 9, face = "bold"),
-    legend.text     = element_text(size = 8),
-    legend.key.size = unit(0.35, "cm")
-  )
-
-# export figure
-ggsave("output/figures/ex_b2.1_bins.pdf", ex_b2.1_bins, width = 9, height = 9, units = "in")
-
-# B2.1_quartiles Shock type distribution by quartile ------------------------------------------------------------
-ex_b2.1_quartile <- df %>%
-  filter(!is.na(lshock_hh_inc), !is.na(lshock_type)) %>%
-  mutate(income_q = ntile(lshock_hh_inc, 4),
-         income_q = factor(income_q,
-                           levels = 1:4,
-                           labels = c("Q1 (Lowest)", "Q2", "Q3", "Q4 (Highest)"))) %>%
-  group_by(income_q) %>%
-  count(lshock_type) %>%
-  mutate(pct = n / sum(n)) %>%
-  mutate(lshock_type = fct_reorder(lshock_type, n)) %>%
-  mutate(lshock_type = fct_relevel(lshock_type, "Other", after = 0)) %>%
-  mutate(label = scales::percent(pct, accuracy = 1)) %>%
-  ggplot(aes(x = pct, y = lshock_type, fill = lshock_type)) +
-  geom_col(fill = "steelblue") +
-  geom_text(aes(label = label), hjust = -0.1, color = "black") +
-  scale_x_continuous(labels = scales::percent, expand = expansion(mult = c(0, 0.12))) +
-  guides(fill = guide_legend(reverse = TRUE, title = "Shock Type")) +
-  ggtitle("Distribution of Shock Types by Income Quartile") +
-  xlab("Share of Reported Shocks") + 
-  ylab("Type of Shock") + 
-  facet_wrap(~ income_q, nrow = 2) +
-  theme_minimal() +
-  theme(
-    strip.text      = element_text(size = 10, margin = margin(b = 2, t = 2)),
-    panel.spacing   = unit(8, "pt"),
-    plot.margin     = margin(10, 10, 5, 10),
-    axis.title      = element_blank(),
-    legend.position = "right",
-    legend.title    = element_text(size = 9, face = "bold"),
-    legend.text     = element_text(size = 8),
-    legend.key.size = unit(0.35, "cm")
-  )
-
-# export figure
-ggsave("output/figures/ex_b2.1_quartile.pdf", ex_b2.1_quartile, width = 6, height = 7, units = "in")
 
 # B2.1 Table: Shock type distribution by income at time of shock ------------------------------------------------------------
 tab_b2.1 <- df %>%
@@ -161,77 +89,7 @@ kable(tab_b2.1,
   kable_styling(latex_options = c("hold_position")) %>%
   cat(file = "output/tables/tab_b2.1_shock_by_income.tex")
 
-# B2.2_bins Shock type distribution by cash buffer ------------------------------------------------------------
-ex_b2.2_bins <- df %>%
-  filter(!is.na(hh_liquidity), !is.na(lshock_type)) %>%
-  mutate(hh_liquidity = factor(hh_liquidity, levels = c("$0 - $100",
-"$100 - $500", "$500 - $1,000", "$1,000 - $2,500" ,  "$2,500 - $5,000" , "$5,000 - $7,500", "$7,500 - $10,000", "$10,000 - $20,000", "$20,000 - $50,000",  "More than $50,000"
-
-  ))) %>%
-  group_by(hh_liquidity) %>%
-  count(lshock_type) %>%
-  mutate(pct = n / sum(n)) %>%
-  mutate(lshock_type = factor(lshock_type, levels = shock_levels)) %>%
-  mutate(label = scales::percent(pct, accuracy = 1)) %>%
-  ggplot(aes(x = pct, y = lshock_type)) +
-  geom_col(fill = "steelblue", color = "white", linewidth = 0.5) +
-  geom_text(aes(label = label), hjust = -0.1, size = 3, color = "black") +
-  scale_x_continuous(labels = scales::percent, expand = expansion(mult = c(0, 0.12))) +
-  ggtitle("Shock Distribution by Liquidity Buffer") +
-    xlab("Share of Reported Shocks") + 
-  ylab("Type of Shock") + 
-  facet_wrap(~ hh_liquidity, nrow = 4) +
-  theme_minimal() +
-  theme(
-    strip.text      = element_text(size = 10, margin = margin(b = 2, t = 2)),
-    panel.spacing   = unit(8, "pt"),
-    plot.margin     = margin(10, 10, 5, 10),
-    axis.title      = element_blank(),
-    legend.position = "none"
-  )
-
-ggsave("output/figures/ex_b2.2_bins.pdf", ex_b2.2_bins, width = 9, height = 9, units = "in")
-
-# B2.2_quartiles Shock type distribution by liquidity buffer quartile ----
-ex_b2.2_quartile <- df %>%
-  filter(!is.na(hh_liquidity), !is.na(lshock_type)) %>%
-  mutate(
-    hh_liquidity = factor(hh_liquidity, levels = c(
-      "$0 - $100", "$100 - $500", "$500 - $1,000", "$1,000 - $2,500",
-      "$2,500 - $5,000", "$5,000 - $7,500", "$7,500 - $10,000",
-      "$10,000 - $20,000", "$20,000 - $50,000", "More than $50,000"
-    )),
-    liquidity_q = ntile(as.integer(hh_liquidity), 4),
-    liquidity_q = factor(liquidity_q,
-                         levels = 1:4,
-                         labels = c("Q1 (Lowest)", "Q2", "Q3", "Q4 (Highest)"))
-  ) %>%
-  group_by(liquidity_q) %>%
-  count(lshock_type) %>%
-  mutate(pct = n / sum(n)) %>%
-  mutate(lshock_type = factor(lshock_type, levels = shock_levels)) %>%
-  mutate(label = scales::percent(pct, accuracy = 1)) %>%
-  ggplot(aes(x = pct, y = lshock_type)) +
-  geom_col(fill = "steelblue", color = "white", linewidth = 0.5) +
-  geom_text(aes(label = label), hjust = -0.1, size = 3, color = "black") +
-  scale_x_continuous(labels = scales::percent, expand = expansion(mult = c(0, 0.12))) +
-  ggtitle("Shock Distribution by Liquidity Buffer Quartile") +
-    xlab("Share of Reported Shocks") + 
-  ylab("Type of Shock") + 
-  facet_wrap(~ liquidity_q, nrow = 2) +
-  theme_minimal() +
-  theme(
-    strip.text      = element_text(size = 10, margin = margin(b = 2, t = 2)),
-    panel.spacing   = unit(8, "pt"),
-    plot.margin     = margin(10, 10, 5, 10),
-    axis.title      = element_blank(),
-    legend.position = "none"
-  )
-
-ggsave("output/figures/ex_b2.2_quartile.pdf", ex_b2.2_quartile, width = 9, height = 9, units = "in")
-
-
-# B2.2b table: Shock type distribution by liquidity buffer at time of shock ------------------------------------------------------------
+# B2.2 Table: Shock type distribution by liquidity buffer at time of shock ------------------------------------------------------------
 tab_b2.2 <- df %>%
   filter(!is.na(hh_liquidity), !is.na(lshock_type)) %>%
   mutate(
@@ -266,6 +124,7 @@ kable(tab_b2.2,
 # B2.3 Shock type distribution by Home value at time of shock ------------------------------------------------------------
   # check correlations between current and lagged home values
   cor(na.omit(df$home_value_lshock_month), na.omit(df$home_value_lag_lshock_month))
+
 # Approx 1. let's just use the contemporaneous home value
 
 tab_b2.3 <- df %>%
