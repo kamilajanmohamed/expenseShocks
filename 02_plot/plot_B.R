@@ -12,7 +12,7 @@ library(tidyverse)
 library(kableExtra)
 
 # Load data ------------------------------------------------------------
-df <- read_csv("data/merged/merged_survey.csv")
+df <- read_rds("data/merged/merged_survey.rds")
 
 # Prep data ------------------------------------------------------------
 # identify all cats that account for less than 3% of shocks and recategories into other
@@ -77,13 +77,14 @@ tab_b2.1 <- df %>%
   mutate(lshock_type = factor(lshock_type, levels = shock_levels)) %>%
   select(income_q, lshock_type, pct) %>%
   mutate(pct = scales::percent(pct, accuracy = 1)) %>%
-  pivot_wider(names_from = income_q, values_from = pct, values_fill = "0%") %>%
-  arrange(desc(lshock_type))
+  pivot_wider(names_from = lshock_type, values_from = pct, values_fill = "0%") %>%
+  arrange(income_q) %>%
+    select(income_q, any_of(rev(shock_levels)))
 
 kable(tab_b2.1,
       format   = "latex",
       booktabs = TRUE,
-      col.names = c("Shock Type", "Q1 (Lowest)", "Q2", "Q3", "Q4 (Highest)"),
+      col.names = c("Group", names(tab_b2.1)[-1]),
       caption  = "Shock Type Distribution by Household Income Quartile",
       label    = "tab:shock_by_income") %>%
   kable_styling(latex_options = c("hold_position")) %>%
@@ -109,13 +110,14 @@ tab_b2.2 <- df %>%
   mutate(lshock_type = factor(lshock_type, levels = shock_levels)) %>%
   select(liquidity_q, lshock_type, pct) %>%
   mutate(pct = scales::percent(pct, accuracy = 1)) %>%
-  pivot_wider(names_from = liquidity_q, values_from = pct, values_fill = "0%") %>%
-  arrange(desc(lshock_type))
+  pivot_wider(names_from = lshock_type, values_from = pct, values_fill = "0%") %>%
+    arrange(liquidity_q) %>%
+    select(liquidity_q, any_of(rev(shock_levels)))
 
 kable(tab_b2.2,
       format    = "latex",
       booktabs  = TRUE,
-      col.names = c("Shock Type", "Q1 (Lowest)", "Q2", "Q3", "Q4 (Highest)"),
+      col.names = c("Group", names(tab_b2.2)[-1]),
       caption   = "Shock Type Distribution by Household Liquidity Buffer Quartile",
       label     = "tab:shock_by_liquidity") %>%
   kable_styling(latex_options = c("hold_position")) %>%
@@ -124,7 +126,6 @@ kable(tab_b2.2,
 # B2.3 Shock type distribution by Home value at time of shock ------------------------------------------------------------
   # check correlations between current and lagged home values
   cor(na.omit(df$home_value_lshock_month), na.omit(df$home_value_lag_lshock_month))
-
 # Approx 1. let's just use the contemporaneous home value
 
 tab_b2.3 <- df %>%
@@ -139,14 +140,16 @@ tab_b2.3 <- df %>%
   mutate(lshock_type = factor(lshock_type, levels = shock_levels)) %>%
   select(home_value_q, lshock_type, pct) %>%
   mutate(pct = scales::percent(pct, accuracy = 1)) %>%
-  pivot_wider(names_from = home_value_q, values_from = pct, values_fill = "0%") %>%
-  arrange(desc(lshock_type))
+    pivot_wider(names_from = lshock_type, values_from = pct, values_fill = "0%") %>%
+    arrange(home_value_q) %>%
+    select(home_value_q, any_of(rev(shock_levels)))
 
   kable(tab_b2.3,
       format    = "latex",
       booktabs  = TRUE,
-      col.names = c("Shock Type", "Q1 (Lowest)", "Q2", "Q3", "Q4 (Highest)"),
+      col.names = c("Group", names(tab_b2.3)[-1]),
       caption   = "Shock Type Distribution by Avg Zipcode Home Value Quartile",
       label     = "tab:shock_by_home_value") %>%
   kable_styling(latex_options = c("hold_position")) %>%
   cat(file = "output/tables/tab_b2.3_shock_by_home_value.tex")
+
