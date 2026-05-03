@@ -31,10 +31,10 @@ df <- read_excel("data/raw/Expense Shock Final Results.xlsx")
 #### Demographic variables -------------------------------------------------------------
 cleaned <- df %>%
   # drop time survey started since we are only interested in date submitted for now
-  select(-`Time Started`) %>%
+  select(-`Time Started`) %>% 
   # rename variables for conciseness
   rename(
-    date = `Date Submitted`,
+    dt_submitted = `Date Submitted`, # a unique identifier for responses since 9 people have multiple complete responses
     age = age_exact,
     age_gen = age_gen_long,
     children = has_children,
@@ -46,7 +46,7 @@ cleaned <- df %>%
     # clean vars
   mutate(
     user_id = as.factor(user_id),
-    date = as.Date(date),
+    date = as.Date(dt_submitted),
     complete_response = case_when(Status == "Complete" ~ 1, 
                                   is.na(Status) ~ NA,
                                   TRUE ~ 0), 
@@ -421,8 +421,6 @@ cleaned <- cleaned %>%
        # relocate liquidity and credit constraint variables to be after preventability variables
        relocate(c("hh_liquidity", "hh_emergency_fund", "hh_credit", "hh_credit_score"), .after = lshock_prev)
 
-
-
 #### Other shocks -------------------------------------------------------------
 cleaned <- cleaned %>%
        # rename variables for conciseness
@@ -454,6 +452,36 @@ cleaned <- process_adverse_outcomes(cleaned, "_6m") %>%
        # relocate adverse outcome variables to be at the end of the dataset
        relocate(c(pastdue_lcc_6m, pastdue_rm_6m, collections_6m, utility_cutoff_6m, repo_notice_6m, eviction_notice_6m, no_adverse_outcome_6m), 
                                                  .after = other_shock_totsize)
+
+#  Financial Distress Index ------------------------------------------------------------
+# people either skip all dummies, or provide an answer to all of them. so drop any obs who skip the adverse outcome questions
+outcome_cols <- cleaned %>% 
+                     filter(!is.na(no_adverse_outcome_6m)) %>%
+                     select(user_id, dt_submitted, contains("_6m")) %>%
+                     select(-c(no_adverse_outcome_6m))
+
+# Compute polychoric (tetrachoric, since binary vars following kolenikov and angeles 2009) correlation matrix. 
+poly_corr <- psych::tetrachoric(outcome_cols[-c(1,2)], na.rm = TRUE)$rho
+
+# conduct polychoric correlations - better for binary vars than regular
+pca_poly <- princomp(covmat = poly_corr)
+summary(pca_poly)
+
+# pc 1 explains 49.8% of variation, pc2 15% and pc3 10%. Let's use pc1 for now. 
+# extract loading on first factor
+lding <-  pca_poly$loadings[, 1]
+
+#construct individual financial distress index . standardise outcomes first because loadings come from a correlation matrix, which is implicitly on a standardized scale. Applying them to standardized inputs keeps the weighting consistent. Without standardization, the most prevalent outcomes would dominate just because they have larger raw variance.
+
+# standardise outcomes using observaed values only, then use loadings to compute index
+index <- data.frame(user_id = outcome_cols[[1]],
+                     dt_submitted = outcome_cols[[2]],
+                            fdi_6m = as.numeric(scale(outcome_cols[-c(1,2)]) %*% lding))
+
+# merge index onto df by unique identifiers
+cleaned <- cleaned %>%
+       left_join(index, by = c("user_id", "dt_submitted")) %>%
+       relocate(fdi_6m, .after = no_adverse_outcome_6m)
 
 #### HH liqudity and credit constraints  Oct 2025 -------------------------------------------------------------
 cleaned <- cleaned %>%
@@ -520,4 +548,5 @@ cleaned <- cleaned %>%
        relocate(c("shock_forecast", "shock_forecast_bin"), .after = no_adverse_outcome_oct25)
 # Export data ------------------------------------------------------------
 write_rds(cleaned, "data/clean/surveyData.rds")
+
 
